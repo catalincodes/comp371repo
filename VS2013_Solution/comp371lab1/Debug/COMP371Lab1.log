@@ -1,0 +1,4 @@
+﻿  Lab1.cpp
+c:\program files (x86)\windows kits\8.1\include\shared\minwindef.h(130): warning C4005: 'APIENTRY': macro redefinition
+  c:\users\mihai\desktop\lab_2 (complete)\vs2013_solution\glfw\glfw3.h(85): note: see previous definition of 'APIENTRY'
+  COMP371Lab1.vcxproj -> C:\Users\Mihai\Desktop\Lab_2 (complete)\VS2013_Solution\Debug\COMP371Lab1.exe
