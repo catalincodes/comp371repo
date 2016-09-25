@@ -15,7 +15,14 @@
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
 
-using namespace std;
+//using namespace std;
+
+typedef unsigned char uchar; // uchar = unsigned char (0..255)
+
+// Image dimensions
+const int IMG_HEIGHT = 360;
+const int IMG_WIDTH = 360;
+
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -24,6 +31,100 @@ const float CAMERA_PAN_STEP = 0.2f;
 
 glm::vec3 triangle_scale = glm::vec3 (1.0f);
 glm::vec3 camera_translation = glm::vec3(0.0f, 0.0f, -1.0f);
+
+UINT* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>& hMapImage)
+{
+	//Array Size. Format = XYZRGB, hence why we multiply the nr of pixels by 6
+	const UINT IMG_ARRAY_SIZE = IMG_WIDTH * IMG_WIDTH * 6;
+	
+	//Aliases for the 3 channels: red, green and blue
+	const int RED = 0;
+	const int GREEN = 1;
+	const int BLUE = 2;
+
+	//Allocate new array
+	UINT* img_array = new UINT[IMG_ARRAY_SIZE];
+	
+	//Process image and build array data
+	/*
+	Format:
+	
+	-------------------------------------------------------------
+	| X POSITION | Y POSITION | Z POSITION | RED | GREEN | BLUE |
+	|   FROM     |    FROM    |    FROM    |    FROM            |
+	| BASE_IMAGE | BASE_IMAGE | HMAP_IMAGE |  BASE_IMAGE        |
+	-------------------------------------------------------------
+	*/
+	UINT counter = 0;
+	for (UINT row = 80; row < 81; ++row) {
+		for (UINT col = 0; col < baseImage._width; ++col) {
+			
+			img_array[counter++] = col;										//X
+			img_array[counter++] = row;										//Y
+			img_array[counter++] = *(hMapImage.data(col, row, 0, RED));		//Z
+
+			img_array[counter++] = *(hMapImage.data(col, row, 0, RED));		//R
+			img_array[counter++] = *(hMapImage.data(col, row, 0, GREEN));	//G
+			img_array[counter++] = *(hMapImage.data(col, row, 0, BLUE));	//B
+
+		}
+	}
+
+	return img_array;
+
+}
+
+void testImage(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>& hMapImage)
+{
+	
+	const UINT IMG_ARRAY_SIZE = IMG_WIDTH * IMG_WIDTH * 6;
+	const int RED = 0;
+	const int GREEN = 1;
+	const int BLUE = 2;
+	UINT* img_array = new UINT[IMG_ARRAY_SIZE];
+	UINT counter = 0;
+	try {
+
+		for (UINT row = 0; row < baseImage._height; ++row) {
+			for (UINT col = 0; col < baseImage._width; ++col) {
+				//std::cout << "WRT in ARRAY at " << counter << "the tollowing (col):" << col << std::endl;
+				img_array[counter++] = col;
+				//std::cout << "WRT in ARRAY at " << counter << "the following (row):" << row << std::endl;
+				img_array[counter++] = row;
+				//std::cout << "WRT in ARRAY at " << counter << "the tollowing (hmp):" << *(hMapImage.data(col, row, 0, RED)) << std::endl;
+				img_array[counter++] = *(hMapImage.data(col, row, 0, RED));
+				//std::cout << "WRT in ARRAY at " << counter << "the tollowing (red):" << *(baseImage.data(col, row, 0, RED)) << std::endl;
+				img_array[counter++] = *(hMapImage.data(col, row, 0, RED));
+				//std::cout << "WRT in ARRAY at " << counter << "the tollowing (grn):" << *(baseImage.data(col, row, 0, GREEN)) << std::endl;
+				img_array[counter++] = *(hMapImage.data(col, row, 0, GREEN));
+				if (row == baseImage._height - 1)
+				{
+					std::cout << "WRT in ARRAY at " << counter << "the tollowing (blu):" << *(baseImage.data(col, row, 0, BLUE)) << std::endl;
+				}
+				img_array[counter++] = *(hMapImage.data(col, row, 0, BLUE));
+			}
+		}
+	}
+	catch (std::exception e) {
+		std::cout << "Error : " << e.what() << std::endl;
+	}
+
+	delete[] img_array;
+}
+
+// Creates a STATIC CImg data container from a given BMP file and return the container
+cimg_library::CImg<USHORT> loadImage(std::string filename)
+{
+	cimg_library::cimg::exception_mode(0); //Enabling quiet exception mode
+	cimg_library::CImg<USHORT> img;
+	try {
+		img = cimg_library::CImg<USHORT>(filename.c_str()); //"org_image.bmp"
+	}
+	catch (cimg_library::CImgException &e) {
+		std::cout << "Error = " << e.what() << std::endl;
+	}
+	return img;
+}
 
 // Is called whenever an error is encountered
 void error_callback(int error, const char* description)
@@ -115,13 +216,13 @@ int main()
 	// ===== Read Shaders from file =====
 
 	// 1) Read the Vertex Shader code from the file
-	string vertex_shader_path = "vertex.shader";
-	string VertexShaderCode;
-	std::ifstream VertexShaderStream(vertex_shader_path, ios::in);
+	std::string vertex_shader_path = "vertex.shader";
+	std::string VertexShaderCode;
+	std::ifstream VertexShaderStream(vertex_shader_path, std::ios::in);
 
 	if (VertexShaderStream.is_open()) {
-		string Line = "";
-		while (getline(VertexShaderStream, Line))
+		std::string Line = "";
+		while (std::getline(VertexShaderStream, Line))
 			VertexShaderCode += "\n" + Line;
 		VertexShaderStream.close();
 	}
@@ -132,7 +233,7 @@ int main()
 	}
 
 	// 2) Read the Fragment Shader code from the file
-	string fragment_shader_path = "fragment.shader";
+	std::string fragment_shader_path = "fragment.shader";
 	std::string FragmentShaderCode;
 	std::ifstream FragmentShaderStream(fragment_shader_path, std::ios::in);
 
@@ -197,6 +298,12 @@ int main()
 	// 7) Use created shaderProgram
 	glUseProgram(shaderProgram);
 
+	cimg_library::CImg<USHORT> img = loadImage("org_image.bmp");
+	cimg_library::CImg<USHORT> hmap = loadImage("height_map.bmp");
+	
+	UINT* img_array = genArray(img, hmap);
+
+
 	// ****************************************
 	// * Load Vertices for Triangle			  *
 	// ****************************************
@@ -247,15 +354,6 @@ int main()
 	// unbind the buffer and the array
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
-
-	cimg_library::cimg::exception_mode(0); //Enabling quiet exception mode
-
-	try {
-		cimg_library::CImg<unsigned char> img("org_image.bmp");
-	}
-	catch (cimg_library::CImgException &e) {
-		std::cout << "Error = " << e.what() << std::endl;
-	}
 
 	GLuint transformLoc = glGetUniformLocation(shaderProgram, "model_matrix");
 	GLuint viewMatrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
