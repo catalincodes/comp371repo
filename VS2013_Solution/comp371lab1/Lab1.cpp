@@ -32,7 +32,7 @@ const float CAMERA_PAN_STEP = 0.2f;
 glm::vec3 triangle_scale = glm::vec3 (1.0f);
 glm::vec3 camera_translation = glm::vec3(0.0f, 0.0f, -1.0f);
 
-UINT* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>& hMapImage)
+GLfloat* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>& hMapImage, UINT &size)
 {
 	//Array Size. Format = XYZRGB, hence why we multiply the nr of pixels by 6
 	const UINT IMG_ARRAY_SIZE = IMG_WIDTH * IMG_WIDTH * 6;
@@ -43,8 +43,8 @@ UINT* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>
 	const int BLUE = 2;
 
 	//Allocate new array
-	UINT* img_array = new UINT[IMG_ARRAY_SIZE];
-	
+	GLfloat* img_array = new GLfloat[IMG_ARRAY_SIZE];
+	size = IMG_ARRAY_SIZE;
 	//Process image and build array data
 	/*
 	Format:
@@ -56,22 +56,37 @@ UINT* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>
 	-------------------------------------------------------------
 	*/
 	UINT counter = 0;
-	for (UINT row = 80; row < 81; ++row) {
+	for (UINT row = 0; row < baseImage._height; ++row) {
 		for (UINT col = 0; col < baseImage._width; ++col) {
 			
-			img_array[counter++] = col;										//X
-			img_array[counter++] = row;										//Y
-			img_array[counter++] = *(hMapImage.data(col, row, 0, RED));		//Z
+			img_array[counter++] = (GLfloat)col;										//X
+			img_array[counter++] = (GLfloat)row;										//Y
+			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, RED));		//Z
 
-			img_array[counter++] = *(hMapImage.data(col, row, 0, RED));		//R
-			img_array[counter++] = *(hMapImage.data(col, row, 0, GREEN));	//G
-			img_array[counter++] = *(hMapImage.data(col, row, 0, BLUE));	//B
+			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, RED));		//R
+			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, GREEN));		//G
+			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, BLUE));		//B
 
 		}
 	}
 
 	return img_array;
 
+}
+
+void normalizeImageArray(GLfloat* img_array, UINT array_size, GLfloat newMin, GLfloat newMax, GLfloat curMin, GLfloat curMax)
+{
+	UINT counter = 0;
+	GLfloat scale = (curMax - curMin) / (newMax - newMin);
+	GLfloat offset = newMin - curMin;
+
+	do {
+		
+		img_array[counter++] = (img_array[counter] / scale) + offset;
+		img_array[counter++] = (img_array[counter] / scale) + offset;
+		img_array[counter++] = (img_array[counter] / scale) + offset;
+		counter += 3; // skip the color attributes, until the next vector
+	} while (counter < array_size);
 }
 
 void testImage(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>& hMapImage)
@@ -270,6 +285,8 @@ GLuint createShaderProgram(std::string vertex_shader_path, std::string fragment_
 	return shaderProgram;
 }
 
+
+
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
@@ -323,7 +340,11 @@ int main()
 	cimg_library::CImg<USHORT> img = loadImage("org_image.bmp");
 	cimg_library::CImg<USHORT> hmap = loadImage("height_map.bmp");
 	
-	UINT* img_array = genArray(img, hmap);
+	UINT imgArraySize;
+	GLfloat* img_array = genArray(img, hmap, imgArraySize);
+
+	normalizeImageArray(img_array, imgArraySize, -1.0f, 1.0f, 0.0f, 360.0f);
+	std::cout << "Done";
 	delete[] img_array;
 
 	// ****************************************
