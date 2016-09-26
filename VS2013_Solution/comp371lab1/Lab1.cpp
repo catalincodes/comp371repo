@@ -159,12 +159,121 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_W && action == GLFW_PRESS)
 		camera_translation.y += CAMERA_PAN_STEP;
 
+	if (key == GLFW_KEY_E && action == GLFW_PRESS)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	if (key == GLFW_KEY_T && action == GLFW_PRESS)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+
+}
+
+// reads ShaderCode from a file (i.e. vertex.shader, fragment.shader) and returns the code as a string
+std::string readShaderCodeFromFile(std::string shader_path)
+{
+	std::string ShaderCode;
+
+	std::ifstream ShaderStream(shader_path, std::ios::in);
+
+	if (ShaderStream.is_open()) {
+		std::string Line = "";
+		while (std::getline(ShaderStream, Line))
+			ShaderCode += "\n" + Line;
+		ShaderStream.close();
+	}
+	else {
+		printf("Impossible to open %s. Are you in the right directory?\n", shader_path.c_str());
+		getchar();
+		exit(-1);
+	}
+
+	return ShaderCode;
+}
+
+// creates and returns a pointer to a shader created from shader code (received as parameter). The shaderType must be mentioned as GL_VERTEX_SHADER or GL_FRAGMENT_SHADER
+GLuint createShader(std::string shaderCode, GLenum shaderType)
+{
+	const int VERTEX_TYPE = 1;
+	const int FRAG_TYPE = 2;
+	GLuint shader;
+
+	shader = glCreateShader(shaderType);
+	
+	char const * sourcePointer = shaderCode.c_str();
+	glShaderSource(shader, 1, &sourcePointer, NULL);
+	glCompileShader(shader);
+
+	//Check for compile time errors
+	GLint success;
+	GLchar infoLog[512];
+
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
+	if (!success) {
+		glGetShaderInfoLog(shader, 512, NULL, infoLog);
+		if (shaderType == GL_VERTEX_SHADER) {
+			std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+		}
+		else if (shaderType == GL_FRAGMENT_SHADER) {
+			std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+		}	
+	}
+
+	return shader;
+}
+
+// creates, links and returns a shader program, from a vertex shader and a fragment shader
+GLuint createShaderProgram(GLuint vertexShader, GLuint fragmentShader)
+{
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	GLint success;
+	GLchar infoLog[512];
+
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+	}
+
+	return shaderProgram;
+
+}
+
+// creates a comp
+GLuint createShaderProgram(std::string vertex_shader_path, std::string fragment_shader_path)
+{
+	// ****************************************
+	// * Build and compile our shader program *
+	// ****************************************
+
+	// Read Shaders from File
+	std::string VertexShaderCode = readShaderCodeFromFile(vertex_shader_path);
+	std::string FragmentShaderCode = readShaderCodeFromFile(fragment_shader_path);
+
+	// Create/Compile Shaders 
+	GLuint vertexShader = createShader(VertexShaderCode, GL_VERTEX_SHADER);
+	GLuint fragmentShader = createShader(FragmentShaderCode, GL_FRAGMENT_SHADER);
+
+	// Link shaders. Created shaderProgram
+	GLuint shaderProgram = createShaderProgram(vertexShader, fragmentShader);
+	
+	// Free up memory
+	glDeleteShader(vertexShader); //free up memory
+	glDeleteShader(fragmentShader);
+
+	return shaderProgram;
 }
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
-	std::cout << "Starting GLFW context, OpenGL 3.3" << std::endl;
+	std::cout << "Starting GLFW context, OpenGL 3.1" << std::endl;
 	// Init GLFW
 	glfwInit();
 
@@ -176,8 +285,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	//glfwWindowHint(GLFW_DEPTH_BITS, 24);
-
+	
 	// Create a GLFWwindow object that we can use for GLFW's functions
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Triangle", nullptr, nullptr);
 	if (window == nullptr)
@@ -190,8 +298,7 @@ int main()
 
 	//V_SYNC - enabled
 	glfwSwapInterval(1);
-	//glEnable(GL_DEPTH_TEST);
-
+	
 	// Set the required callback functions
 	glfwSetKeyCallback(window, key_callback);
 
@@ -209,100 +316,15 @@ int main()
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, width, height);
 
-	// ****************************************
-	// * Build and compile our shader program *
-	// ****************************************
-
-	// ===== Read Shaders from file =====
-
-	// 1) Read the Vertex Shader code from the file
-	std::string vertex_shader_path = "vertex.shader";
-	std::string VertexShaderCode;
-	std::ifstream VertexShaderStream(vertex_shader_path, std::ios::in);
-
-	if (VertexShaderStream.is_open()) {
-		std::string Line = "";
-		while (std::getline(VertexShaderStream, Line))
-			VertexShaderCode += "\n" + Line;
-		VertexShaderStream.close();
-	}
-	else {
-		printf("Impossible to open %s. Are you in the right directory ?\n", vertex_shader_path.c_str());
-		getchar();
-		exit(-1);
-	}
-
-	// 2) Read the Fragment Shader code from the file
-	std::string fragment_shader_path = "fragment.shader";
-	std::string FragmentShaderCode;
-	std::ifstream FragmentShaderStream(fragment_shader_path, std::ios::in);
-
-	if (FragmentShaderStream.is_open()) {
-		std::string Line = "";
-		while (getline(FragmentShaderStream, Line))
-			FragmentShaderCode += "\n" + Line;
-		FragmentShaderStream.close();
-	}
-	else {
-		printf("Impossible to open %s. Are you in the right directory?\n", fragment_shader_path.c_str());
-		getchar();
-		exit(-1);
-	}
-
-	// 3) Create Vertex Shader
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	char const * VertexSourcePointer = VertexShaderCode.c_str();
-	glShaderSource(vertexShader, 1, &VertexSourcePointer, NULL);
-	glCompileShader(vertexShader);
-
-	// 3.1) Check for compile time errors for Vertex Shader
-	GLint success;
-	GLchar infoLog[512];
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-
-	// 4) Create Fragment shader
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	char const * FragmentSourcePointer = FragmentShaderCode.c_str();
-	glShaderSource(fragmentShader, 1, &FragmentSourcePointer, NULL);
-	glCompileShader(fragmentShader);
-
-	// 4.1) Check for compile time errors
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-
-	// 5) Link shaders. Created shaderProgram
-	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-
-	// 5.1) Check for linking errors
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-	}
-
-	// 6) Free up memory
-	glDeleteShader(vertexShader); //free up memory
-	glDeleteShader(fragmentShader);
-
-
-	// 7) Use created shaderProgram
+	//Create Shader Program from a vertex shader file and a fragment file
+	GLuint shaderProgram = createShaderProgram("vertex.shader","fragment.shader");
 	glUseProgram(shaderProgram);
-
+	
 	cimg_library::CImg<USHORT> img = loadImage("org_image.bmp");
 	cimg_library::CImg<USHORT> hmap = loadImage("height_map.bmp");
 	
 	UINT* img_array = genArray(img, hmap);
-
+	delete[] img_array;
 
 	// ****************************************
 	// * Load Vertices for Triangle			  *
@@ -370,7 +392,7 @@ int main()
 		// Clear the colorbuffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		
+				
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glBindVertexArray(0);
