@@ -14,6 +14,7 @@
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
 #include "gtc/type_ptr.hpp"
+#include <vector>
 
 //using namespace std;
 
@@ -63,9 +64,9 @@ GLfloat* genArray(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHO
 			img_array[counter++] = (GLfloat)row;										//Y
 			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, RED));		//Z
 
-			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, RED));		//R
-			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, GREEN));		//G
-			img_array[counter++] = (GLfloat)*(hMapImage.data(col, row, 0, BLUE));		//B
+			img_array[counter++] = (GLfloat)*(baseImage.data(col, row, 0, RED));		//R
+			img_array[counter++] = (GLfloat)*(baseImage.data(col, row, 0, GREEN));		//G
+			img_array[counter++] = (GLfloat)*(baseImage.data(col, row, 0, BLUE));		//B
 
 		}
 	}
@@ -285,6 +286,29 @@ GLuint createShaderProgram(std::string vertex_shader_path, std::string fragment_
 	return shaderProgram;
 }
 
+std::vector<GLuint> genIndicesVector(UINT numCols, UINT numRows)
+{
+	std::vector<GLuint> indVector;
+	for (int j = 0; j < (unsigned int)numRows - 1;++j) {
+		for (int i = 0; i < (unsigned int)numCols;++i)
+		{
+			
+			//TOP TRIANGLE
+			indVector.push_back(i);
+			indVector.push_back(i + numCols);
+			indVector.push_back(i + 1);
+			
+			//BOTTOM TRIANGLE
+			indVector.push_back(i + 1);
+			indVector.push_back(i + numCols);
+			indVector.push_back(i + numCols + 1);
+		}
+	}
+	
+	return indVector;
+}
+
+
 
 
 // The MAIN function, from here we start the application and run the game loop
@@ -302,6 +326,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
 	
 	// Create a GLFWwindow object that we can use for GLFW's functions
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Triangle", nullptr, nullptr);
@@ -315,6 +340,8 @@ int main()
 
 	//V_SYNC - enabled
 	glfwSwapInterval(1);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_ALWAYS);
 	
 	// Set the required callback functions
 	glfwSetKeyCallback(window, key_callback);
@@ -344,21 +371,24 @@ int main()
 	GLfloat* img_array = genArray(img, hmap, imgArraySize);
 
 	normalizeImageArray(img_array, imgArraySize, -1.0f, 1.0f, 0.0f, 360.0f);
+		
+	std::vector<GLuint> indicesVector = genIndicesVector(360, 360);
+
 	std::cout << "Done";
-	delete[] img_array;
 
 	// ****************************************
 	// * Load Vertices for Triangle			  *
 	// ****************************************
 
 	// 1) Create Array of Vertices
+	/*
 	GLfloat vertices[] = {
 		0.0f, 0.5f, 0.0f,  // Top
 		0.5f, -0.5f, 0.0f,  // Bottom Right
 		-0.5f, -0.5f, 0.0f,  // Bottom Left
 	};
-
-	GLuint VAO, VBO;
+	*/
+	GLuint VAO, VBO, EBO;
 
 	// Generate Vertex Array Object
 	glGenVertexArrays(1, &VAO);
@@ -366,13 +396,21 @@ int main()
 	// Generate Vertex Buffer Object
 	glGenBuffers(1, &VBO);
 
+	// Generate Element Buffer Object
+	glGenBuffers(1, &EBO);
+
 	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
 	glBindVertexArray(VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+	
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(img_array), img_array, GL_STATIC_DRAW);
+	
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
 
 	/*
 	void glVertexAttribPointer(	GLuint index,				generic vertex attrib to be modified			0
@@ -392,10 +430,14 @@ int main()
 															generic vertex attribute in the array
 	*/
 	
-	glEnableVertexAttribArray(0);
+	// Bind the Element Buffer Object and use it to send the indices vector
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesVector.size() * sizeof(GLuint), &indicesVector.front(), GL_STATIC_DRAW);
 
 	// unbind the buffer and the array
+	
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 
 	GLuint transformLoc = glGetUniformLocation(shaderProgram, "model_matrix");
@@ -411,18 +453,22 @@ int main()
 
 		// Render
 		// Clear the colorbuffer
-		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		
+		//glClear(GL_COLOR_BUFFER_BIT);
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, indicesVector.size(), GL_UNSIGNED_INT, (void*)0);
 		glBindVertexArray(0);
 
 		glm::mat4 model_matrix;
 		model_matrix = glm::scale(model_matrix, triangle_scale);
 
 		glm::mat4 view_matrix;
-		view_matrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), //camera positioned here
+		view_matrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 200.0f)+camera_translation, //camera positioned here
 			glm::vec3(0.0f, 0.0f, 0.0f), //looks at origin
 			glm::vec3(0.0f, 1.0f, 0.0f)); //up vector
 
@@ -439,6 +485,7 @@ int main()
 	}
 	
 	// Terminate GLFW, clearing any resources allocated by GLFW.
+	delete[] img_array;
 	glfwTerminate();
 	return 0;
 }
