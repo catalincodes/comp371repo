@@ -16,105 +16,31 @@ using namespace std;
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 600;
+
 const float TRIANGLE_MOVEMENT_STEP = 0.1f;
 const float CAMERA_PAN_STEP = 0.2f;
-
 glm::vec3 triangle_scale = glm::vec3 (1.0f);
 glm::vec3 camera_translation = glm::vec3(0.0f, 0.0f, -1.0f);
 
 // Is called whenever an error is encountered
-void error_callback(int error, const char* description)
-{
-	std::cerr << "Error #" << error << " = " << description;
-}
-
-// Is called whenever a key is pressed/released via GLFW
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
-{
-	std::cout << key << std::endl;
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GL_TRUE);
-	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
-		triangle_scale.x += TRIANGLE_MOVEMENT_STEP;
-	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
-		triangle_scale.x -= TRIANGLE_MOVEMENT_STEP;
-	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
-		triangle_scale.y += TRIANGLE_MOVEMENT_STEP;
-	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
-		triangle_scale.y -= TRIANGLE_MOVEMENT_STEP;
-
-	if (key == GLFW_KEY_D && action == GLFW_PRESS)
-		camera_translation.x += CAMERA_PAN_STEP;
-
-	if (key == GLFW_KEY_A && action == GLFW_PRESS)
-		camera_translation.x -= CAMERA_PAN_STEP;
-
-	if (key == GLFW_KEY_S && action == GLFW_PRESS)
-		camera_translation.y -= CAMERA_PAN_STEP;
-
-	if (key == GLFW_KEY_W && action == GLFW_PRESS)
-		camera_translation.y += CAMERA_PAN_STEP;
-
-}
-
-
-
+void error_callback(int error, const char* description);
+// Is called whenever a key is pressed / released via GLFW
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+// is called to initialize the graphics
+bool initGraphics(GLFWwindow*& window, std::string title, int& viewportWidth, int& viewportHeight);
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
-	std::cout << "Starting GLFW context, OpenGL 3.3" << std::endl;
-	// Init GLFW
-	glfwInit();
+	GLFWwindow* window = nullptr;
 
-	// Register error callback function
-	glfwSetErrorCallback(error_callback);
-
-	// Set all the required options for GLFW
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	//glfwWindowHint(GLFW_DEPTH_BITS, 24);
-
-	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Triangle", nullptr, nullptr);
-	if (window == nullptr)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(window);
-
-	//V_SYNC - enabled
-	glfwSwapInterval(1);
-	//glEnable(GL_DEPTH_TEST);
-
-	// Set the required callback functions
-	glfwSetKeyCallback(window, key_callback);
-
-	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
-	glewExperimental = GL_TRUE;
-	// Initialize GLEW to setup the OpenGL Function pointers
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Failed to initialize GLEW" << std::endl;
-		return -1;
-	}
-
-	// Define the viewport dimensions
+	// initialize graphics
 	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
-	glViewport(0, 0, width, height);
-
-	// ****************************************
-	// * Build and compile our shader program *
-	// ****************************************
-
-	//Create Shader Program from a vertex shader file and a fragment file
-	Shader* shaderSet = new Shader("vertex.shader", "fragment.shader");
+	if (!initGraphics(window, "Triangle", width, height))
+		return -1;
 	
+	// create shaders
+	Shader* shader = new Shader("vertex.shader", "fragment.shader");
 
 	// ****************************************
 	// * Load Vertices for Triangle			  *
@@ -176,9 +102,9 @@ int main()
 		std::cout << "Error = " << e.what() << std::endl;
 	}
 
-	GLuint transformLoc = glGetUniformLocation(shaderSet->getShaderProgram(), "model_matrix");
-	GLuint viewMatrixLoc = glGetUniformLocation(shaderSet->getShaderProgram(), "view_matrix");
-	GLuint projectionLoc = glGetUniformLocation(shaderSet->getShaderProgram(), "projection_matrix");
+	GLuint transformLoc = glGetUniformLocation(shader->getShaderProgram(), "model_matrix");
+	GLuint viewMatrixLoc = glGetUniformLocation(shader->getShaderProgram(), "view_matrix");
+	GLuint projectionLoc = glGetUniformLocation(shader->getShaderProgram(), "projection_matrix");
 
 	// *********************
 	// * G A M E   L O O P *
@@ -219,8 +145,67 @@ int main()
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwTerminate();
 	
-	delete shaderSet;
-	shaderSet = nullptr;
+	delete shader;
+	shader = nullptr;
 
 	return 0;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
+{
+	std::cout << key << std::endl;
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GL_TRUE);
+}
+
+void error_callback(int error, const char* description)
+{
+	std::cerr << "Error #" << error << " = " << description;
+}
+
+
+bool initGraphics(GLFWwindow*& window, std::string title, int& viewportWidth, int& viewportHeight)
+{
+	std::cout << "Starting GLFW context, OpenGL 3.1" << std::endl;
+	// Init GLFW
+	glfwInit();
+	// Register error callback function
+	glfwSetErrorCallback(error_callback);
+
+	// Set all the required options for GLFW
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+	//glfwWindowHint(GLFW_DEPTH_BITS, 24);
+
+	// Create a GLFWwindow object that we can use for GLFW's functions
+	window = glfwCreateWindow(WIDTH, HEIGHT, title.c_str(), nullptr, nullptr);
+	if (window == nullptr) {
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		return false;
+	}
+	glfwMakeContextCurrent(window);
+
+	//V_SYNC - enabled
+	glfwSwapInterval(1);
+	//glEnable(GL_DEPTH_TEST);
+
+	// Set the required callback functions
+	glfwSetKeyCallback(window, key_callback);
+
+	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
+	glewExperimental = GL_TRUE;
+	// Initialize GLEW to setup the OpenGL Function pointers
+	if (glewInit() != GLEW_OK) {
+		std::cout << "Failed to initialize GLEW" << std::endl;
+		return false;
+	}
+
+	// Define the viewport dimensions
+	glfwGetFramebufferSize(window, &viewportWidth, &viewportHeight);
+	glViewport(0, 0, viewportWidth, viewportHeight);
+	
+	return true;
 }

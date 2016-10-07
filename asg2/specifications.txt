@@ -1,0 +1,27 @@
+== SPECIFICATIONS FOR ASSIGNMENT 2 == 
+
+Notes from description:
+
+learn about Catmull-Rom splines and basic model animation. 
+
+develop application in OpenGL
+take as input a set of control points
+create a cubic Catmull-Rom spline
+draw a 3D object moving along spline
+
+-- part 1 --
+
+create a GLFW window , size - 800 x 800
+use ortho projection (how?) (initialize)
+click on a number of points
+	get info from mouse
+	add info to a vector of positions (x,y) objects update the vertex shader every time.
+
+Step 1: initialize (self-defined function)
+Step 2: do-while loop #1, loop until enter is pressed
+Step 3: render spline (STAGE 2)
+Step 4: draw triangle and move it along  
+
+
+Questions: 
+- can we send over and over again the information to the card using the VertexAtribPointer so that I can add elements to the vector and draw them?
