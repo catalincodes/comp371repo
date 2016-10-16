@@ -3,7 +3,6 @@
 //modified from http://learnopengl.com/
 
 #include "stdafx.h"
-
 #include "..\glew\glew.h"	// include GL Extension Wrangler
 #include "..\glfw\glfw3.h"	// include GLFW helper library
 #include <stdio.h>
@@ -15,22 +14,23 @@
 #include "gtc/type_ptr.hpp"
 #include <vector>
 #include "DataContainer.h"
-#include "Shader.h"
+//#include "Shader.h"
+#include "CatGLEngine.h"
 
 //using namespace std;
 
 typedef unsigned char uchar; // uchar = unsigned char (0..255)
 
-// Image dimensions
-const int IMG_HEIGHT = 360;
-const int IMG_WIDTH = 360;
-
 DataContainer* container = nullptr;
 
 // Window dimensions
-const GLuint WIDTH = 800, HEIGHT = 600;
+const GLuint WIDTH = 800, HEIGHT = 800;
 const float TRIANGLE_MOVEMENT_STEP = 0.1f;
 const float CAMERA_PAN_STEP = 100.00f;
+
+enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
+State currentState = INPUT_DATA;
+bool needsUpdate = false;
 
 glm::vec3 triangle_scale = glm::vec3 (1.0f);
 glm::vec3 camera_translation = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -111,12 +111,13 @@ void testImage(cimg_library::CImg<USHORT>& baseImage, cimg_library::CImg<USHORT>
 }
 */
 
-
+/*
 // Is called whenever an error is encountered
 void error_callback(int error, const char* description)
 {
 	std::cerr << "Error #" << error << " = " << description;
 }
+*/
 
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -156,12 +157,30 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		if (container != nullptr && currentState == INPUT_DATA) {
+			double x, y;
+			glfwGetCursorPos(window, &x, &y);
+			std::cout << "xpos = " << x << "\typos = " << y << std::endl;
+			GLfloat xPos = (GLfloat)x;
+			GLfloat yPos = (GLfloat)y;
+			container->addData(xPos, yPos);
+			needsUpdate = true;
+			//std::cout << "adding data " << container->getData().size() << endl;
+		}
+	}
+
+}
+
+
 std::vector<GLuint> genIndicesVector(GLuint numCols, GLuint numRows)
 {
 	std::vector<GLuint> indVector;
-	for (int j = 0;	j < (numRows - 1); ++j) 
+	for (unsigned int j = 0;	j < (numRows - 1); ++j) 
 	{
-		for (int i = 0; i < numCols; ++i)
+		for (unsigned int i = 0; i < numCols; ++i)
 		{
 			
 			//TOP TRIANGLE
@@ -190,128 +209,23 @@ void testIndVector(std::vector<GLuint> testVec)
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
-	std::cout << "Starting GLFW context, OpenGL 3.1" << std::endl;
-	// Init GLFW
-	glfwInit();
+	CatGLEngine engine;
 
-	// Register error callback function
-	glfwSetErrorCallback(error_callback);
-
-	// Set all the required options for GLFW
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-	
-	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Triangle", nullptr, nullptr);
-	if (window == nullptr)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
+	if (engine.initGL(WIDTH, HEIGHT, key_callback, mouse_button_callback) == -1)
 		return -1;
-	}
-	glfwMakeContextCurrent(window);
-
-	//V_SYNC - enabled
-	glfwSwapInterval(1);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_ALWAYS);
-	
-	// Set the required callback functions
-	glfwSetKeyCallback(window, key_callback);
-
-	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
-	glewExperimental = GL_TRUE;
-	// Initialize GLEW to setup the OpenGL Function pointers
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Failed to initialize GLEW" << std::endl;
-		return -1;
-	}
-
-	// Define the viewport dimensions
-	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
-	glViewport(0, 0, width, height);
-
-	//Create Shader Program from a vertex shader file and a fragment file
-
-	Shader* shaderObject = new Shader("vertex.shader", "fragment.shader");
-	GLuint shaderProgram = shaderObject->getShaderProgram();
-	glUseProgram(shaderProgram);
-	
-	
-	//normalizeImageArray(img_array, imgArraySize, -1.0f, 1.0f, 0.0f, 360.0f);
 		
-	std::vector<GLuint> indicesVector = genIndicesVector(360, 360);
-	//testIndVector(indicesVector);
-
-	// ****************************************
-	// * Load Vertices for Triangle			  *
-	// ****************************************
-
-	// 1) Create Array of Vertices
-	
 	container = new DataContainer();
 	container->addData(100.0f, 100.0f);
-
-	GLuint VAO, VBO, EBO;
-
-	// Generate Vertex Array Object
-	glGenVertexArrays(1, &VAO);
-
-	// Generate Vertex Buffer Object
-	glGenBuffers(1, &VBO);
-
-	// Generate Element Buffer Object
-	glGenBuffers(1, &EBO);
-
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glBufferData(GL_ARRAY_BUFFER, container->getData().size() * sizeof(GLfloat), container->getData().data(), GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	/*
-	void glVertexAttribPointer(	GLuint index,				generic vertex attrib to be modified			0
-
-								GLint size,					nr of components per generic vertex attrib		3
-
-								GLenum type,				data type of each component in the array		GL_FLOAT
-
-								GLboolean normalized,		specifies whether fixed-point data values
-															should be normalized (GL_TRUE) or converted
-															directly as fixed-point values (GL_FALSE)
-															when they are accessed.							GL_FALSE
-
-								GLsizei stride,				Specifies the byte offset between				3 * sizeof(GLfloat)
-															consecutive generic vertex attributes.
-															const 
-
-								GLvoid * pointer);			first component of the first							(GLvoid*)0
-															generic vertex attribute in the array
-								*/
+	container->addData(400.0f, 400.0f);
 	
 
-	// Bind the Element Buffer Object and use it to send the indices vector
-	
-	/*glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesVector.size() * sizeof(GLuint), indicesVector.data(), GL_STATIC_DRAW);*/
+	engine.initVertexObjects();
 
-	// unbind the buffer and the array
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
+	engine.sendData(container->getData(), GL_STATIC_DRAW);
+		
+	//GLuint VAO = engine.getVertexArrayObject();
+	GLuint shaderProgram = engine.getShaderProgram();
+	GLFWwindow* window = engine.getWindowPtr();
 
 	GLuint transformLoc = glGetUniformLocation(shaderProgram, "model_matrix");
 	GLuint viewMatrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
@@ -327,32 +241,52 @@ int main()
 
 		// Render
 		// Clear the colorbuffer
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 		//glClear(GL_COLOR_BUFFER_BIT);
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				
-		glBindVertexArray(VAO);
-		glDrawArrays(GL_POINTS, 0, container->getData().size() / 6);
+		glPointSize(5);
+	
+		switch (currentState) {
+		case INPUT_DATA:
+		{
+			// update GPU data
 
-		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-		//glDrawElements(GL_TRIANGLES, indicesVector.size() * 3, GL_UNSIGNED_INT, (void*)0);
+			if (needsUpdate == true) {
+				engine.sendData(container->getData(), GL_STATIC_DRAW);
+			}
+			engine.renderVBO(GL_POINTS, 0, container->getData().size() / 6);
+			break;
+		}
+
+		case RENDER_SPLINE:
+		{
+			break;
+		}
+
+		case ANIMATE:
+		{
+			break;
+		}
+		}
+
+
+
+
+
 		
-		glBindVertexArray(0);
+
 
 		glm::mat4 model_matrix;
 		model_matrix = glm::scale(model_matrix, triangle_scale);
 
 		glm::mat4 view_matrix;
-		view_matrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 800.0f)+camera_translation, //camera positioned here
-			glm::vec3(180.0f, 180.0f, 0.0f), //looks at origin
-			glm::vec3(0.0f, 1.0f, 0.0f)); //up vector
-
-		glPointSize(20);
+		
+		
 		glm::mat4 projection_matrix;
-		projection_matrix = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.0f, 100.0f);
-
+		//projection_matrix = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.0f, 100.0f);
+		projection_matrix = glm::ortho(0.0f, 800.0f, 800.0f, 0.0f, -1.0f, 1.0f);
 
 		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
 		glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
@@ -365,7 +299,6 @@ int main()
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 
 	delete container;
-	delete shaderObject;
 	glfwTerminate();
 	return 0;
 }
