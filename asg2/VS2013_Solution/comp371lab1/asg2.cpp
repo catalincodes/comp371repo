@@ -15,6 +15,7 @@ using namespace std;
 const GLuint WIDTH = 800, HEIGHT = 800;
 
 enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
+
 State currentState = INPUT_DATA;
 bool needsUpdate = false;
 
@@ -31,7 +32,8 @@ bool initGraphics(GLFWwindow*& window, std::string title, int& viewportWidth, in
 GLuint generateVAO();
 void sendDataToGPU(vector<GLfloat>& inputData, GLuint& VAO);
 void renderPoints(GLuint& VAO, int nrPoints);
-
+void displayContent();
+void normalizePoints(double &x, double &y);
 
 DataContainer* container = nullptr;
 
@@ -51,25 +53,9 @@ int main()
 	
 	container = new DataContainer();
 
-	
-
 	GLuint VAO;
 	VAO = generateVAO();
-/*
-	// Generate Vertex Array Object
-	glGenVertexArrays(1, &VAO);
 
-	// Generate Vertex Buffer Object
-	glGenBuffers(1, &VBO);
-
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	*/
 	/*
 	void glVertexAttribPointer(	GLuint index,				generic vertex attrib to be modified			0
 
@@ -87,14 +73,7 @@ int main()
 								const GLvoid * pointer);	first component of the first					(GLvoid*)0
 															generic vertex attribute in the array
 	*/
-	/*
-	glEnableVertexAttribArray(0);
-
-	// unbind the buffer and the array
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
-	*/
-
+	
 	GLuint transformLoc = glGetUniformLocation(shader->getShaderProgram(), "model_matrix");
 	GLuint viewMatrixLoc = glGetUniformLocation(shader->getShaderProgram(), "view_matrix");
 	GLuint projectionLoc = glGetUniformLocation(shader->getShaderProgram(), "projection_matrix");
@@ -111,15 +90,16 @@ int main()
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT);
-		
-		
+	
 		switch (currentState) {
 		case INPUT_DATA:
 		{
 			// update GPU data
+					
 			if (needsUpdate == true) {
 				sendDataToGPU(container->getData(), VAO);
 			}
+			
 			renderPoints(VAO, container->getData().size()/6 );
 			break;
 		}
@@ -146,13 +126,13 @@ int main()
 
 		glm::mat4 view_matrix;
 		view_matrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 100.0f), //camera positioned here
-					glm::vec3(400.0f, 400.0f, 0.0f), //looks at origin
+					glm::vec3(0.0f, 0.0f, 0.0f), //looks at origin
 					glm::vec3(0.0f, 1.0f, 0.0f)); //up vector
 
 		glm::mat4 projection_matrix;
-		// projection_matrix = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.0f, 100.0f);
+		//projection_matrix = glm::perspective(45.0f, (GLfloat)width / (GLfloat)height, 0.0f, 100.0f);
 		projection_matrix = glm::ortho(0.0f, 800.0f, 800.0f, 0.0f);
-
+		
 		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
 		glUniformMatrix4fv(viewMatrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
@@ -178,6 +158,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	std::cout << key << std::endl;
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+		displayContent();
+	if (key == GLFW_KEY_C && action == GLFW_PRESS)
+		system("CLS");
 }
 
 void error_callback(int error, const char* description)
@@ -191,8 +175,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		if (container != nullptr && currentState == INPUT_DATA) {
 			double x, y;
 			glfwGetCursorPos(window, &x, &y);
-			container->addData((GLfloat)x, (GLfloat)y);
+			normalizePoints(x, y);
+			GLfloat xPos = (GLfloat)x;
+			GLfloat yPos = (GLfloat)y;
+			container->addData(xPos, yPos);
 			needsUpdate = true;
+			cout << "adding data " << container->getData().size() << endl;
 		}
 	}
 	
@@ -216,7 +204,7 @@ GLuint generateVAO()
 void sendDataToGPU(vector<GLfloat>& inputData, GLuint& VAO)
 {
 	// fail-safe in case the VAO has not been initalized
-	cout << "sending new data to GPU. inputData = " << inputData[0] << "." << endl;
+	cout << "sending new data to GPU." << endl;
 	if (VAO == 0) {
 		generateVAO();
 	}
@@ -297,3 +285,22 @@ bool initGraphics(GLFWwindow*& window, std::string title, int& viewportWidth, in
 	
 	return true;
 }
+//debug function used to display content of vector
+void displayContent()
+{
+	for (unsigned int i = 0; i < container->getData().size(); i += 6) {
+		cout << container->getData().at(i) << "\t"
+			<< container->getData().at(i + 1) << "\t"
+			<< container->getData().at(i + 2) << "\t"
+			<< container->getData().at(i + 3) << "\t"
+			<< container->getData().at(i + 4) << "\t"
+			<< container->getData().at(i + 5) << endl;
+	}
+	cout << "\n\n";
+}
+
+void normalizePoints(double &x , double &y)
+{
+	x = x * 2 / 800 - 1;
+	y = y * 2 / 800 - 1;
+}	
