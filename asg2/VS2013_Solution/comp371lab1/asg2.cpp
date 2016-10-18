@@ -16,7 +16,8 @@
 #include "DataContainer.h"
 #include "CatGLEngine.h"
 
-void generateSpline();
+glm::vec3 catmullRomFunc(GLfloat u, glm::mat4 controlMatrix);
+void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, glm::mat4 currentControlMatrix);
 
 typedef unsigned char uchar; // uchar = unsigned char (0..255)
 
@@ -128,7 +129,7 @@ int main()
 		case RENDER_SPLINE:
 		{
 			if (container->getData().size() >= 4 && booya == false) {
-				generateSpline();
+				//generateSpline();
 				booya = true;
 			}
 			break;
@@ -163,23 +164,51 @@ int main()
 	glfwTerminate();
 	return 0;
 }
+/*
+void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, glm::mat4 currentControlMatrix)
+{
+	GLfloat uMid = (GLfloat)((u0 + u1) / 2.0f);
+	glm::vec3 x0 = catmullRomFunc(u0, currentControlMatrix);
+}
 
-void generateSpline()
+*/
+
+glm::vec3 catmullRomFunc(GLfloat u, glm::mat4 controlMatrix)
 {
 	vector<GLfloat> v = container->getData();
+
+	//GLfloat u = 1;
+	GLfloat u_2 = pow(u, 2);
+	GLfloat u_3 = pow(u, 3);
+
+	GLfloat s = 0.5; //tension parameter
+
+	// result of multiplying the input [u^3, u^2, u^1, 1] by the basis matrix 
+	GLfloat b1 = u_3*(0 - s) + u_2 * (2 * s) + u * (0 - s);
+	GLfloat b2 = u_3*(2 - s) + u_2 * (s - 3) + 1;
+	GLfloat b3 = u_3*(s - 2) + u_2 * (3 - 2 * s) + u*s;
+	GLfloat b4 = u_3*(s) + u_2*(0 - s);
+	
+	// multiply the vector from the previous calculation [b1, b2, b3, b4] by the control matrix
+	GLfloat x = b1*v.at(0) + b2*v.at(6) + b3*v.at(12) + b4*v.at(18);
+	GLfloat y = b1*v.at(1) + b2*v.at(7) + b3*v.at(13) + b4*v.at(19);
+	GLfloat z = b1*v.at(2) + b2*v.at(8) + b3*v.at(14) + b4*v.at(20);
+
+	/*
 	glm::mat4 control = glm::mat4(
 		glm::vec4(v.at(0), v.at(1), v.at(2), 0),
 		glm::vec4(v.at(6), v.at(7), v.at(8), 0),
 		glm::vec4(v.at(12), v.at(13), v.at(14), 0),
 		glm::vec4(v.at(18), v.at(19), v.at(20), 0)
 		);
+	
 	std::cout << "CONTROL:" << std::endl;
 	std::cout << control[0][0] << " " << control[0][1] << " " << control[0][2] << " " << control[0][3] << std::endl;
 	std::cout << control[1][0] << " " << control[1][1] << " " << control[1][2] << " " << control[1][3] << std::endl;
 	std::cout << control[2][0] << " " << control[2][1] << " " << control[2][2] << " " << control[2][3] << std::endl;
 	std::cout << control[3][0] << " " << control[3][1] << " " << control[3][2] << " " << control[3][3] << std::endl;
 
-	GLfloat s = 0.5;
+//	GLfloat s = 0.5;
 	glm::mat4 basis = glm::mat4(
 		glm::vec4(-s, 2 - s, s - 2, s),
 		glm::vec4(2 * s, s - 3, 3 - 2 * s, -s),
@@ -194,12 +223,15 @@ void generateSpline()
 	std::cout << basis[3][0] << " " << basis[3][1] << " " << basis[3][2] << " " << basis[3][3] << std::endl;
 
 	
-	GLfloat u = 0;
+	//GLfloat u = 0;
 	glm::vec4 input = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
 	std::cout << "INPUT:" << std::endl;
 	std::cout << input[0] << " " << input[1] << " " << input[2] << " " << input[3] << std::endl;
-
+	
 	glm::vec4 result = input * basis * control;
+	*/
 	std::cout << "RESULT:" << std::endl;
-	std::cout << result.x << " " << result.y << " " << result.z << " " << result.w << std::endl;
+	std::cout << "x = " << x << " y = " << y << " z = " << z << std::endl;
+
+	return glm::vec3(x, y, z);
 }
