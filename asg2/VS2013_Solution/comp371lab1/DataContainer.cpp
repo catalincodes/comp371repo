@@ -11,16 +11,27 @@ DataContainer::~DataContainer()
 
 void DataContainer::addData(GLfloat x, GLfloat y)
 {
-	container.push_back(x);
-	container.push_back(y);
-	container.push_back(0.0f);
+	containerData.push_back(x);
+	containerData.push_back(y);
+	containerData.push_back(0.0f);
 
-	container.push_back(0.0f);
-	container.push_back(0.5f);
-	container.push_back(0.5f);
+	containerData.push_back(0.0f);
+	containerData.push_back(0.5f);
+	containerData.push_back(0.5f);
 }
 
 vector<GLfloat> DataContainer::getData()
 {
-	return container;
+	return containerData;
+}
+
+bool DataContainer::clearData()
+{
+	containerData.clear();
+	containerData.resize(0);
+	if (containerData.size() != 0)
+	{
+		return false;
+	}
+	return true;	
 }

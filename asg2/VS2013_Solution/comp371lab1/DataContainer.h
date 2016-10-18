@@ -8,11 +8,12 @@ class DataContainer
 {
 public:
 	DataContainer();
-	~DataContainer();
+	~DataContainer();	
 
 	void addData(GLfloat x, GLfloat y);
 	vector<GLfloat> getData();
+	bool clearData();
 private:
-	vector<GLfloat> container;
+	vector<GLfloat> containerData;
 };
 

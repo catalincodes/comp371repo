@@ -16,6 +16,7 @@
 #include "DataContainer.h"
 #include "CatGLEngine.h"
 
+void generateSpline();
 
 typedef unsigned char uchar; // uchar = unsigned char (0..255)
 
@@ -23,6 +24,9 @@ DataContainer* container = nullptr;
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 800;
+
+bool booya = false;
+
 
 enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
 State currentState = INPUT_DATA;
@@ -34,7 +38,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	std::cout << key << std::endl;
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+
+	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && currentState == INPUT_DATA) 
+	{
+		currentState = RENDER_SPLINE;
+	}
 	
+	if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
+		
+		container->clearData();
+		currentState = INPUT_DATA;
+		needsUpdate = true;
+	}
+		
 	if (key == GLFW_KEY_E && action == GLFW_PRESS)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
@@ -103,7 +119,7 @@ int main()
 			// update GPU data
 
 			if (needsUpdate == true) {
-				engine.sendData(container->getData(), GL_STATIC_DRAW);
+				engine.sendData(container->getData(), GL_DYNAMIC_DRAW);
 			}
 			engine.renderVBO(GL_POINTS, 0, container->getData().size() / 6);
 			break;
@@ -111,7 +127,12 @@ int main()
 
 		case RENDER_SPLINE:
 		{
+			if (container->getData().size() >= 4 && booya == false) {
+				generateSpline();
+				booya = true;
+			}
 			break;
+			
 		}
 
 		case ANIMATE:
@@ -141,4 +162,44 @@ int main()
 	delete container;
 	glfwTerminate();
 	return 0;
+}
+
+void generateSpline()
+{
+	vector<GLfloat> v = container->getData();
+	glm::mat4 control = glm::mat4(
+		glm::vec4(v.at(0), v.at(1), v.at(2), 0),
+		glm::vec4(v.at(6), v.at(7), v.at(8), 0),
+		glm::vec4(v.at(12), v.at(13), v.at(14), 0),
+		glm::vec4(v.at(18), v.at(19), v.at(20), 0)
+		);
+	std::cout << "CONTROL:" << std::endl;
+	std::cout << control[0][0] << " " << control[0][1] << " " << control[0][2] << " " << control[0][3] << std::endl;
+	std::cout << control[1][0] << " " << control[1][1] << " " << control[1][2] << " " << control[1][3] << std::endl;
+	std::cout << control[2][0] << " " << control[2][1] << " " << control[2][2] << " " << control[2][3] << std::endl;
+	std::cout << control[3][0] << " " << control[3][1] << " " << control[3][2] << " " << control[3][3] << std::endl;
+
+	GLfloat s = 0.5;
+	glm::mat4 basis = glm::mat4(
+		glm::vec4(-s, 2 - s, s - 2, s),
+		glm::vec4(2 * s, s - 3, 3 - 2 * s, -s),
+		glm::vec4(-s, 0, s, 0),
+		glm::vec4(0, 1, 0, 0)
+		);
+	
+	std::cout << "BASIS:" << std::endl;
+	std::cout << basis[0][0] << " " << basis[0][1] << " " << basis[0][2] << " " << basis[0][3] << std::endl;
+	std::cout << basis[1][0] << " " << basis[1][1] << " " << basis[1][2] << " " << basis[1][3] << std::endl;
+	std::cout << basis[2][0] << " " << basis[2][1] << " " << basis[2][2] << " " << basis[2][3] << std::endl;
+	std::cout << basis[3][0] << " " << basis[3][1] << " " << basis[3][2] << " " << basis[3][3] << std::endl;
+
+	
+	GLfloat u = 0;
+	glm::vec4 input = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
+	std::cout << "INPUT:" << std::endl;
+	std::cout << input[0] << " " << input[1] << " " << input[2] << " " << input[3] << std::endl;
+
+	glm::vec4 result = input * basis * control;
+	std::cout << "RESULT:" << std::endl;
+	std::cout << result.x << " " << result.y << " " << result.z << " " << result.w << std::endl;
 }
