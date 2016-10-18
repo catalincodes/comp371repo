@@ -25,3 +25,23 @@ Step 4: draw triangle and move it along
 
 Questions: 
 - can we send over and over again the information to the card using the VertexAtribPointer so that I can add elements to the vector and draw them?
+
+
+if keypress= enter && currentState = input_data
+	currentState++;
+
+if keypress == L && currentState = genSpline
+	render(newData, GL_LINE_STRIP)
+if keypress == P && currentState = genSpline
+	render(newData, GL_POINTS)
+if keypress == backspace && currentState = genSpline
+	clear genSpline
+	clear data
+
+
+bool renderedSpline = false;
+
+if (renderedSpline==false) {
+	vector<glm::vec2> newData = generateSpline(container.getData());
+
+}
