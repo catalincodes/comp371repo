@@ -48,16 +48,17 @@ const GLuint WIDTH = 800, HEIGHT = 800;
 
 bool booya = false;
 bool isSplineGenerated = false;
+bool needsUpdate = false;
 
 enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
 State currentState = INPUT_DATA;
-bool needsUpdate = false;
-unsigned int numPoints;
+enum RenderMode {LINE_RENDERING, POINT_RENDERING};
+RenderMode renderMode = LINE_RENDERING;
 
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-	std::cout << key << std::endl;
+	//std::cout << key << std::endl;
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 
@@ -71,6 +72,16 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		resetApp();
 	}
 		
+	if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+		renderMode = POINT_RENDERING;
+		std::cout << "Point rendering" << std::endl;
+	}
+
+	if (key == GLFW_KEY_L && action == GLFW_PRESS) {
+		renderMode = LINE_RENDERING ;
+		std::cout << "Line rendering" << std::endl;
+	}
+
 	if (key == GLFW_KEY_E && action == GLFW_PRESS)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	if (key == GLFW_KEY_T && action == GLFW_PRESS)
@@ -127,13 +138,13 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		glPointSize(5);
+		
 	
 		switch (currentState) {
 		case INPUT_DATA:
 		{
 			// update GPU data
-
+			glPointSize(5);
 			if (needsUpdate == true) {
 				engine.sendData(userPoints->getData(), GL_DYNAMIC_DRAW);
 			}
@@ -143,6 +154,7 @@ int main()
 
 		case RENDER_SPLINE:
 		{
+			
 			// generate the spline
 			if (isSplineGenerated == false) {
 				generateSpline();
@@ -159,7 +171,16 @@ int main()
 
 			// assuming we successfully generated the spline, render it
 			if (isSplineGenerated) {
-				engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
+				if (renderMode == LINE_RENDERING) {
+					glPointSize(1);
+					engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
+					//std::cout << "L" << std::endl;
+				}
+				else if (renderMode == POINT_RENDERING) {
+					glPointSize(3);
+					engine.renderVBO(GL_POINTS, 0, splinePoints->getData().size() / 6);
+					//std::cout << "P" << std::endl;
+				}
 			}
 			
 			break;
@@ -315,7 +336,7 @@ void generateSpline()
 				glm::vec4(v[i*6 + 18], v[i*6 + 19], v[i*6 + 20], 0)
 				);
 
-			subDivisionAlgo(0.0f, 1.0f, 2.0f, ccm);
+			subDivisionAlgo(0.0f, 1.0f, 30.0f, ccm);
 
 		}
 
