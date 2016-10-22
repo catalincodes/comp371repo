@@ -16,8 +16,16 @@
 #include "DataContainer.h"
 #include "CatGLEngine.h"
 
+// generates the spline 
+void generateSpline();
+// converts the list of lines into a vector of points
+void generateSplinePointsVector();
+// returns a vec3 point given a parameter (u) and a control matrix
 glm::vec3 catmullRomFunc(GLfloat u, const glm::mat4& controlMatrix);
+// general subDivisionAlgorithm implementation
 void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, const glm::mat4& currentControlMatrix);
+
+
 struct Line
 {
 	glm::vec3 start;
@@ -28,22 +36,21 @@ struct Line
 		start(s), end(e) { }
 
 };
-
 vector<Line> listLines;
 
-typedef unsigned char uchar; // uchar = unsigned char (0..255)
-
-DataContainer* container = nullptr;
+DataContainer* userPoints = nullptr;
+DataContainer* splinePoints = nullptr;
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 800;
 
 bool booya = false;
-
+bool isSplineGenerated = false;
 
 enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
 State currentState = INPUT_DATA;
 bool needsUpdate = false;
+unsigned int numPoints;
 
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -54,12 +61,18 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && currentState == INPUT_DATA) 
 	{
+		std::cout << "Moving to RENDER_SPLINE" << std::endl;
 		currentState = RENDER_SPLINE;
 	}
 	
 	if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
-		
-		container->clearData();
+		if (userPoints->getData().size() != 0) {
+			userPoints->clearData();
+		}
+		if (splinePoints!=nullptr) {
+			splinePoints->clearData();
+		}
+		std::cout << "Moving back to INPUT_DATA" << std::endl;
 		currentState = INPUT_DATA;
 		needsUpdate = true;
 	}
@@ -76,33 +89,29 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		if (container != nullptr && currentState == INPUT_DATA) {
+		if (userPoints != nullptr && currentState == INPUT_DATA) {
 			double x, y;
 			glfwGetCursorPos(window, &x, &y);
 			std::cout << "xpos = " << x << "\typos = " << y << std::endl;
 			GLfloat xPos = (GLfloat)x;
 			GLfloat yPos = (GLfloat)y;
-			container->addData(xPos, yPos);
+			userPoints->addData(xPos, yPos);
 			needsUpdate = true;
-			//std::cout << "adding data " << container->getData().size() << endl;
+			//std::cout << "adding data " << userPoints->getData().size() << endl;
 		}
 	}
 
 }
 
-
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
 	CatGLEngine engine;
-
 	if (engine.initGL(WIDTH, HEIGHT, key_callback, mouse_button_callback) == -1)
 		return -1;
-		
-	container = new DataContainer();
-
+	userPoints = new DataContainer();
 	engine.initVertexObjects();
-		
+	
 	GLuint shaderProgram = engine.getShaderProgram();
 	GLFWwindow* window = engine.getWindowPtr();
 
@@ -132,31 +141,20 @@ int main()
 			// update GPU data
 
 			if (needsUpdate == true) {
-				engine.sendData(container->getData(), GL_DYNAMIC_DRAW);
+				engine.sendData(userPoints->getData(), GL_DYNAMIC_DRAW);
 			}
-			engine.renderVBO(GL_POINTS, 0, container->getData().size() / 6);
+			engine.renderVBO(GL_POINTS, 0, userPoints->getData().size() / 6);
 			break;
 		}
 
 		case RENDER_SPLINE:
 		{
-			vector<GLfloat> v = container->getData();
-			if (container->getData().size() >= 4 && booya == false) {
-				
-				int i = 0;
-				glm::mat4 ccm = glm::mat4(
-					glm::vec4(v[i],        v[i+1],       v[i+2],           0),
-					glm::vec4(v[i+6],      v[i+7],       v[i+8],           0),
-					glm::vec4(v[i+12],     v[i+13]      ,v[i+14],          0),
-					glm::vec4(v[i+18],     v[i+19]      ,v[i+20],          0)
-					);
-
-				subDivisionAlgo(0.0f, 1.0f, 2.0f, ccm);
-
-				booya = true;
+			if (isSplineGenerated == false) {
+				generateSpline();
+				engine.sendData(splinePoints->getData(), GL_STATIC_DRAW);
 			}
+			engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
 			break;
-			
 		}
 
 		case ANIMATE:
@@ -183,45 +181,50 @@ int main()
 	
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 
-	delete container;
+	if (userPoints != nullptr) 
+		delete userPoints;
+	if (splinePoints != nullptr)
+		delete splinePoints;
+
 	glfwTerminate();
 	return 0;
 }
 
+// general subDivisionAlgorithm implementation
 void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, const glm::mat4& currentControlMatrix)
 {
-	std::cout << "subDivAlgo method called for " << u0 << " and "<< u1 << "." << std::endl;
+//	std::cout << "subDivAlgo method called for " << u0 << " and "<< u1 << "." << std::endl;
 	GLfloat uMid = (GLfloat)((u0 + u1) / 2.0f);
 	glm::vec3 x0 = catmullRomFunc(u0, currentControlMatrix);
 	glm::vec3 x1 = catmullRomFunc(u1, currentControlMatrix);
 
 	GLfloat distance = glm::distance(x0, x1);
-	std::cout << "Back in subDivAlgo. Distance = " << distance << std::endl;
-	std::cout << "Comparing to the maxLineLength " << maxLineLength << "...";
+//	std::cout << "Back in subDivAlgo. Distance = " << distance << std::endl;
+//	std::cout << "Comparing to the maxLineLength " << maxLineLength << "...";
 
 
 	if (abs(distance) > maxLineLength) {
-		std::cout << "I'm going to subdivide again with the midpoint " << uMid << "." << std::endl;
+//		std::cout << "I'm going to subdivide again with the midpoint " << uMid << "." << std::endl;
 		
-		std::cout << "Calling subdivision from " << u0 << " and " << uMid << ":" << std::endl;
+//		std::cout << "Calling subdivision from " << u0 << " and " << uMid << ":" << std::endl;
 		subDivisionAlgo(u0, uMid, maxLineLength, currentControlMatrix);
-		std::cout << "Calling subdivision from " << uMid << " and " << u1 << ":" << std::endl;
+//		std::cout << "Calling subdivision from " << uMid << " and " << u1 << ":" << std::endl;
 		subDivisionAlgo(uMid, u1, maxLineLength, currentControlMatrix);
 	}
 	else {
-		std::cout << "And we are good... I have the following two points to place in a container: " << std::endl;
-		std::cout << "x0 (" << x0.x << ", " << x0.y << ", " << x0.z << ") + ";
-		std::cout << "x1 (" << x1.x << ", " << x1.y << ", " << x1.z << ")" << std::endl;
+//		std::cout << "And we are good... I have the following two points to place in a container: " << std::endl;
+//		std::cout << "x0 (" << x0.x << ", " << x0.y << ", " << x0.z << ") + ";
+//		std::cout << "x1 (" << x1.x << ", " << x1.y << ", " << x1.z << ")" << std::endl;
 		listLines.push_back(Line(x0, x1));
 	}
 
 }
 
 
-
+// returns a vec3 point given a parameter (u) and a control matrix
 glm::vec3 catmullRomFunc(GLfloat u, const glm::mat4& controlMatrix)
 {
-	std::cout << "CatMull calculation for : " << u << "." << std::endl;
+	//std::cout << "CatMull calculation for : " << u << "." << std::endl;
 
 	/* 
 		[0][0]	[0][1]	[0][2]	[0][3]
@@ -280,8 +283,53 @@ glm::vec3 catmullRomFunc(GLfloat u, const glm::mat4& controlMatrix)
 				b4 * controlMatrix[3][2];
 
 
-	std::cout << "RESULT:" << std::endl;
-	std::cout << "x = " << x << " y = " << y << " z = " << z << std::endl;
+	//std::cout << "RESULT:" << std::endl;
+	//std::cout << "x = " << x << " y = " << y << " z = " << z << std::endl;
 
 	return glm::vec3(x, y, z);
+}
+
+void generateSpline()
+{
+	vector<GLfloat> v = userPoints->getData();
+	unsigned int numPoints = v.size() / 6;
+	
+	std::cout << "np = " << numPoints << std::endl;
+	
+	if (numPoints >= 4) {
+
+		for (unsigned int i = 0; i < (numPoints-3); ++i) {
+			
+			glm::mat4 ccm = glm::mat4(
+				glm::vec4(v[i*6 + 0],  v[i*6 + 1],  v[i*6 + 2], 0),
+				glm::vec4(v[i*6 + 6],  v[i*6 + 7],  v[i&6 + 8], 0),
+				glm::vec4(v[i*6 + 12], v[i*6 + 13], v[i*6 + 14], 0),
+				glm::vec4(v[i*6 + 18], v[i*6 + 19], v[i*6 + 20], 0)
+				);
+
+			subDivisionAlgo(0.0f, 1.0f, 2.0f, ccm);
+
+		}
+
+		generateSplinePointsVector();
+		
+		isSplineGenerated = true;
+	}
+
+}
+
+void generateSplinePointsVector()
+{
+	if (listLines.size() == 0)
+		return;
+	splinePoints = new DataContainer;
+
+	//add the start points of all the lines
+	for (Line currentLine : listLines) {
+		splinePoints->addData(currentLine.start.x, currentLine.start.y);
+	}
+
+	//add the end point of the last line in the list of lines
+	Line* lastLine = &(listLines.at(listLines.size() - 1));
+	splinePoints->addData(lastLine->end.x, lastLine->end.y);
 }
