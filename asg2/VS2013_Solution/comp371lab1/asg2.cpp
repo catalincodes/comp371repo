@@ -24,6 +24,8 @@ void generateSplinePointsVector();
 glm::vec3 catmullRomFunc(GLfloat u, const glm::mat4& controlMatrix);
 // general subDivisionAlgorithm implementation
 void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, const glm::mat4& currentControlMatrix);
+// resets the program
+void resetApp();
 
 
 struct Line
@@ -66,15 +68,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 	
 	if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
-		if (userPoints->getData().size() != 0) {
-			userPoints->clearData();
-		}
-		if (splinePoints!=nullptr) {
-			splinePoints->clearData();
-		}
-		std::cout << "Moving back to INPUT_DATA" << std::endl;
-		currentState = INPUT_DATA;
-		needsUpdate = true;
+		resetApp();
 	}
 		
 	if (key == GLFW_KEY_E && action == GLFW_PRESS)
@@ -149,11 +143,25 @@ int main()
 
 		case RENDER_SPLINE:
 		{
+			// generate the spline
 			if (isSplineGenerated == false) {
 				generateSpline();
+			}
+			// if we did not generate ths spline reset the program to INPUT_DATA
+			if (isSplineGenerated == false) /*still*/ {
+				resetApp();
+				break;
+			}
+			// else, send the data to the GPU
+			else {
 				engine.sendData(splinePoints->getData(), GL_STATIC_DRAW);
 			}
-			engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
+
+			// assuming we successfully generated the spline, render it
+			if (isSplineGenerated) {
+				engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
+			}
+			
 			break;
 		}
 
@@ -332,4 +340,26 @@ void generateSplinePointsVector()
 	//add the end point of the last line in the list of lines
 	Line* lastLine = &(listLines.at(listLines.size() - 1));
 	splinePoints->addData(lastLine->end.x, lastLine->end.y);
+}
+
+void resetApp()
+{
+	if (userPoints != nullptr) {
+		delete userPoints;
+		userPoints = new DataContainer;
+	}
+	if (splinePoints != nullptr) {
+		delete splinePoints;
+		splinePoints = nullptr;
+		isSplineGenerated = false;
+	}
+	if (listLines.size() != 0) {
+		listLines.clear();
+		listLines.resize(0);
+	}
+	if (currentState != INPUT_DATA) {
+		std::cout << "Moving back to INPUT_DATA" << std::endl;
+		currentState = INPUT_DATA;
+	}
+	needsUpdate = true;
 }
