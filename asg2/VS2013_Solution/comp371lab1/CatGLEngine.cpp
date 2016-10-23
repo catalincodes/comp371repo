@@ -6,6 +6,8 @@ void error_callback(int error, const char* description);
 CatGLEngine::CatGLEngine()
 {
 	VAO = 0;
+	VBO = 0;
+	TriangleVBO = 0;
 }
 
 
@@ -19,8 +21,14 @@ void CatGLEngine::initVertexObjects()
 	// Generate VAO
 	glGenVertexArrays(1, &VAO);
 
+	// Generate Triangle VAO
+	glGenVertexArrays(1, &TriangleVAO);
+
 	// Generate VBO
 	glGenBuffers(1, &VBO);
+
+	// Generate Triangle VBO
+	glGenBuffers(1, &TriangleVBO);
 
 }
 
@@ -66,10 +74,37 @@ void CatGLEngine::sendData(std::vector<GLfloat> bufferData, GLenum usage)
 	glBindVertexArray(0);
 }
 
+void CatGLEngine::sendTriangleData(std::vector<GLfloat> bufferData, GLenum usage)
+{
+	//Bind VAO and VBO
+	glBindVertexArray(TriangleVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, TriangleVBO);
+
+	//Copy bufferData to bound VBO
+	glBufferData(GL_ARRAY_BUFFER, bufferData.size() * sizeof(GLfloat), bufferData.data(), usage);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_TRUE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+
+	//Unbind VAO and VBO (reverse order)
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
 void CatGLEngine::renderVBO(GLenum mode, GLint offset , GLsizei nrVertices)
 {
 	glBindVertexArray(VAO);
 	glDrawArrays(mode, offset , nrVertices);
+	glBindVertexArray(0);
+}
+
+void CatGLEngine::renderTriangle(GLenum mode, GLint offset, GLsizei nrVertices)
+{
+	glBindVertexArray(TriangleVAO);
+	glDrawArrays(mode, offset, nrVertices);
 	glBindVertexArray(0);
 }
 
