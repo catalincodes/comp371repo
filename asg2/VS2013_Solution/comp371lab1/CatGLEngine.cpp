@@ -108,7 +108,7 @@ void CatGLEngine::renderTriangle(GLenum mode, GLint offset, GLsizei nrVertices)
 	glBindVertexArray(0);
 }
 
-GLint CatGLEngine::initGL(GLuint const WIDTH , GLuint const HEIGHT, GLFWkeyfun keyCallBackFunc, GLFWmousebuttonfun msBtnCallBackFunc)
+GLint CatGLEngine::initGL(GLuint const WIDTH , GLuint const HEIGHT, GLFWkeyfun keyCallBackFunc, GLFWmousebuttonfun msBtnCallBackFunc, GLFWframebuffersizefun windowResizeCallbackFunc)
 {
 	std::cout << "Starting GLFW context, OpenGL 3.1" << std::endl;
 	// Init GLFW
@@ -134,6 +134,7 @@ GLint CatGLEngine::initGL(GLuint const WIDTH , GLuint const HEIGHT, GLFWkeyfun k
 	// Set the required callback functions
 	glfwSetKeyCallback(window, keyCallBackFunc);
 	glfwSetMouseButtonCallback(window, msBtnCallBackFunc);
+	glfwSetFramebufferSizeCallback(window, windowResizeCallbackFunc);
 
 	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
 	glewExperimental = GL_TRUE;

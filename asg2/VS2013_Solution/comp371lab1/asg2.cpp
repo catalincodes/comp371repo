@@ -16,6 +16,8 @@
 #include "DataContainer.h"
 #include "CatGLEngine.h"
 
+// NON-CALLBACK FUNCTIONS:
+
 // generates the spline 
 void generateSpline();
 // converts the list of lines into a vector of points
@@ -26,7 +28,12 @@ glm::vec3 catmullRomFunc(GLfloat u, const glm::mat4& controlMatrix);
 void subDivisionAlgo(GLfloat u0, GLfloat u1, GLfloat maxLineLength, const glm::mat4& currentControlMatrix);
 // resets the program
 void resetApp();
+// renders the spline
+void renderSpline(CatGLEngine& engine);
+// returns the intial position
+glm::vec3 getInitialPosition();
 
+// GLOBAL VARIABLES
 
 struct Line
 {
@@ -38,10 +45,21 @@ struct Line
 		start(s), end(e) { }
 
 };
+
+GLfloat triangleA[] =
+//     VERTICES					COLOR (red)
+{
+	0.0f, 0.0f,  0.0f,		1.0f, 0.0f, 0.0f,
+	0.0f, 20.0f, 0.0f,		1.0f, 0.0f, 0.0f,
+	40.0f, 10.0f, 0.0f,		1.0f, 0.0f, 0.0f,
+};
+
+
 vector<Line> listLines;
 
 DataContainer* userPoints = nullptr;
 DataContainer* splinePoints = nullptr;
+vector<GLfloat>* triangle = nullptr;
 
 // Window dimensions
 const GLuint WIDTH = 800, HEIGHT = 800;
@@ -54,6 +72,7 @@ enum State { INPUT_DATA, RENDER_SPLINE, ANIMATE };
 State currentState = INPUT_DATA;
 enum RenderMode {LINE_RENDERING, POINT_RENDERING};
 RenderMode renderMode = LINE_RENDERING;
+glm::mat4 projection_matrix;
 
 // Is called whenever a key is pressed/released via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -64,12 +83,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 	if (key == GLFW_KEY_ENTER && action == GLFW_PRESS && currentState == INPUT_DATA) 
 	{
-		std::cout << "Moving to RENDER_SPLINE" << std::endl;
+		//std::cout << "Moving to RENDER_SPLINE" << std::endl;
 		currentState = RENDER_SPLINE;
 	}
 	
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && currentState == RENDER_SPLINE) {
+		std::cout << "Commencing animation ... " << std::endl;
+		currentState = ANIMATE;
+	}
+
 	if (key == GLFW_KEY_BACKSPACE && action == GLFW_PRESS) {
-		resetApp();
+		resetApp(); // state change embedded in the method
 	}
 		
 	if (key == GLFW_KEY_P && action == GLFW_PRESS) {
@@ -82,13 +106,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		std::cout << "Line rendering" << std::endl;
 	}
 
-	if (key == GLFW_KEY_E && action == GLFW_PRESS)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	if (key == GLFW_KEY_T && action == GLFW_PRESS)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	if (key == GLFW_KEY_P && action == GLFW_PRESS)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
-
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -97,7 +114,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 		if (userPoints != nullptr && currentState == INPUT_DATA) {
 			double x, y;
 			glfwGetCursorPos(window, &x, &y);
-			std::cout << "xpos = " << x << "\typos = " << y << std::endl;
+			std::cout << "Point added ( " << x << ", " << y << " )" << std::endl;
 			GLfloat xPos = (GLfloat)x;
 			GLfloat yPos = (GLfloat)y;
 			userPoints->addData(xPos, yPos);
@@ -108,13 +125,29 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 }
 
+void windows_resize_callback(GLFWwindow* window, int width, int height)
+{
+	glViewport(0, 0, width, height);
+
+	// Update the Projection matrix after a window resize event
+	projection_matrix = glm::ortho(0.0f, 800.0f, 800.0f, 0.0f, -1.0f, 1.0f);
+}
+
+
+
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
 	CatGLEngine engine;
-	if (engine.initGL(WIDTH, HEIGHT, key_callback, mouse_button_callback) == -1)
+	if (engine.initGL(WIDTH, HEIGHT, key_callback, mouse_button_callback, windows_resize_callback) == -1)
 		return -1;
 	userPoints = new DataContainer();
+	
+	triangle = new vector<GLfloat>();
+	for (int i = 0; i < 3*6;++i) {
+		triangle->push_back(triangleA[i]);
+	}
+
 	engine.initVertexObjects();
 	
 	GLuint shaderProgram = engine.getShaderProgram();
@@ -169,25 +202,16 @@ int main()
 				engine.sendData(splinePoints->getData(), GL_STATIC_DRAW);
 			}
 
-			// assuming we successfully generated the spline, render it
-			if (isSplineGenerated) {
-				if (renderMode == LINE_RENDERING) {
-					glPointSize(1);
-					engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
-					//std::cout << "L" << std::endl;
-				}
-				else if (renderMode == POINT_RENDERING) {
-					glPointSize(3);
-					engine.renderVBO(GL_POINTS, 0, splinePoints->getData().size() / 6);
-					//std::cout << "P" << std::endl;
-				}
-			}
+			renderSpline(engine);
 			
 			break;
 		}
 
 		case ANIMATE:
 		{
+			renderSpline(engine);
+			engine.sendTriangleData(*triangle, GL_STATIC_DRAW);
+			engine.renderTriangle(GL_TRIANGLES, 0, 3);
 			break;
 		}
 		}
@@ -323,7 +347,7 @@ void generateSpline()
 	vector<GLfloat> v = userPoints->getData();
 	unsigned int numPoints = v.size() / 6;
 	
-	std::cout << "np = " << numPoints << std::endl;
+	std::cout << "Generating spline... ";
 	
 	if (numPoints >= 4) {
 
@@ -345,6 +369,7 @@ void generateSpline()
 		isSplineGenerated = true;
 	}
 
+	std::cout << "done" << std::endl;
 }
 
 void generateSplinePointsVector()
@@ -383,4 +408,30 @@ void resetApp()
 		currentState = INPUT_DATA;
 	}
 	needsUpdate = true;
+}
+
+void renderSpline(CatGLEngine& engine)
+{
+	// assuming we successfully generated the spline, render it
+	if (isSplineGenerated) {
+		if (renderMode == LINE_RENDERING) {
+			glPointSize(1);
+			engine.renderVBO(GL_LINE_STRIP, 0, splinePoints->getData().size() / 6);
+			//std::cout << "L" << std::endl;
+		}
+		else if (renderMode == POINT_RENDERING) {
+			glPointSize(3);
+			engine.renderVBO(GL_POINTS, 0, splinePoints->getData().size() / 6);
+			//std::cout << "P" << std::endl;
+		}
+	}
+}
+
+glm::vec3 getInitialPosition()
+{
+	return glm::vec3(
+		splinePoints->getData().at(0), //x
+		splinePoints->getData().at(1), //y
+		splinePoints->getData().at(2)  //z
+		);
 }

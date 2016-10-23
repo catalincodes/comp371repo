@@ -24,7 +24,7 @@ public:
 	~CatGLEngine();
 
 	// initalization methods
-	GLint initGL(GLuint const WIDTH, GLuint const HEIGHT, GLFWkeyfun keyCallBackFunc, GLFWmousebuttonfun msBtnCallBackFunc);
+	GLint initGL(GLuint const WIDTH, GLuint const HEIGHT, GLFWkeyfun keyCallBackFunc, GLFWmousebuttonfun msBtnCallBackFunc, GLFWframebuffersizefun windowResizeCallbackFunc);
 	void initVertexObjects();
 
 	// send data to GPU
