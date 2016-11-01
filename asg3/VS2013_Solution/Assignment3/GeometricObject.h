@@ -1,5 +1,6 @@
 #pragma once
 #include "GenericObject.h"
+
 class GeometricObject :
 	public GenericObject
 {

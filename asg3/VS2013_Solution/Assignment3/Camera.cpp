@@ -3,11 +3,15 @@
 
 
 Camera::Camera()
-{}
+{
+	objectType = CAMERA;
+}
 
 Camera::Camera(glm::vec3 pos, double fov, double focalLen, double aspect):
 	GenericObject(pos), fov(fov), focalLen(focalLen), aspect(aspect)
-{}
+{
+	objectType = CAMERA;
+}
 
 
 Camera::~Camera()

@@ -6,6 +6,7 @@ class Plane :
 private:
 	glm::vec3 normal;
 public:
+	//constructors and destructors
 	Plane();
 	Plane(glm::vec3 pos, glm::vec3 nor, glm::vec3 amb, glm::vec3 dif, glm::vec3 spe, double shi);
 	virtual ~Plane();

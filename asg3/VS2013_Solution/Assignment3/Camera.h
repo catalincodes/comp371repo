@@ -8,7 +8,7 @@ private:
 	double focalLen;
 	double aspect;
 public:
-	//constructors and destrucors
+	//constructors and destructors
 	Camera();
 	Camera(glm::vec3 pos, double fov, double focalLen, double aspect);
 	virtual ~Camera();

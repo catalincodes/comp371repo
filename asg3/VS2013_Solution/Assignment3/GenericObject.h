@@ -1,8 +1,13 @@
 #pragma once
 #include "..\glm\glm.hpp"
 
+enum ObjectType {CAMERA, LIGHT, PLANE, SPHERE, TRIANGLE };
+
 class GenericObject
 {
+protected:
+	ObjectType objectType;
+private:
 	glm::vec3 pos;
 public:
 	//CONSTRUCTORS & DESTRUCTORS
@@ -12,6 +17,7 @@ public:
 
 	//GETTERS & SETTERS
 	virtual void setPos(glm::vec3 newPos) { pos = newPos; }
+	virtual ObjectType getObjectType() { return objectType; }
 	virtual glm::vec3 getPos(void) const { return pos; }
 };
 
