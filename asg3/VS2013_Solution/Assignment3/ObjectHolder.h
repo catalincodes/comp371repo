@@ -13,6 +13,7 @@ private:
 	bool hasCamera;
 	bool hasLightSrc;
 	bool goodState;
+	bool verifyState();
 public:
 	ObjectHolder();
 	ObjectHolder(std::vector<GenericObject*>* givenObjectList);
@@ -20,8 +21,7 @@ public:
 
 	std::vector<GenericObject*>* getObjectList() { return objectList; }
 	bool getState() const { return goodState; }
-	bool clearList();
-	bool verifyState();
+	bool clearList();	
 
 	void addCamera(glm::vec3 pos, double fov, double focalLen, double aspect);
 	void addLight(glm::vec3 pos, glm::vec3 color);
