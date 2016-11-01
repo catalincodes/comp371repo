@@ -151,6 +151,7 @@
     <ClInclude Include="GeometricObject.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="Plane.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
@@ -158,6 +159,7 @@
     <ClCompile Include="GeometricObject.cpp" />
     <ClCompile Include="Light.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Plane.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

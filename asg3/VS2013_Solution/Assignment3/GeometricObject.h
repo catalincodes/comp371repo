@@ -18,7 +18,7 @@ public:
 	virtual glm::vec3 getAmb() const { return amb; };
 	virtual glm::vec3 getDif() const { return dif; };
 	virtual glm::vec3 getSpe() const { return spe; };
-	virtual float getShi() const { return shi; };
+	virtual double getShi() const { return shi; };
 
 	virtual void setAmb(glm::vec3 newAmb) { amb = newAmb; }
 	virtual void setDif(glm::vec3 newDif) { dif = newDif; }
