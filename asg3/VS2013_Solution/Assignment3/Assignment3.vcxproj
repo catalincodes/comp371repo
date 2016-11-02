@@ -146,6 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="asgManager.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="GenericObject.h" />
     <ClInclude Include="GeometricObject.h" />
@@ -158,6 +159,7 @@
     <ClInclude Include="Triangle.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="asgManager.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="GenericObject.cpp" />
     <ClCompile Include="GeometricObject.cpp" />

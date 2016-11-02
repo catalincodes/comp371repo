@@ -1,5 +1,6 @@
 #include "Parser.h"
 #include <fstream>
+#include <iostream>
 
 
 
@@ -172,11 +173,16 @@ Parser::~Parser()
 
 bool Parser::execute()
 {
-	if (testFile()==false)
+	if (testFile() == false) {
+		std::cerr << "file not found!" << std::endl;
 		return false;
+	}
+		
+	if (objectList == nullptr) 	{
+		std::cerr << "objList not initialized" << std::endl;
+		return false;
+	}
 	
-	if (objectList == nullptr)
-		return false;
 
 	std::ifstream inputStream(sceneFileName);
 	
@@ -184,23 +190,29 @@ bool Parser::execute()
 	int nrObjects = 0;
 	inputStream >> nrObjects;
 
-	for (int i = 0; ((i < nrObjects) && (std::ios::end == false));++i) {
+	for (int i = 0; (i < nrObjects+2);++i) {
 		std::string objTypeStr;
 		inputStream >> objTypeStr;
 		if (objTypeStr == "camera") {
+			std::cout << "reading a camera" << std::endl;
 			readCamera(inputStream);
 		}
 		else if (objTypeStr == "light") {
+			std::cout << "reading a light" << std::endl;
 			readLight(inputStream);
 		}
 		else if (objTypeStr == "plane") {
+			std::cout << "reading a plane" << std::endl;
 			readPlane(inputStream);
 		}
 		else if (objTypeStr == "sphere") {
+			std::cout << "reading a sphere" << std::endl;
 			readSphere(inputStream);
 		}
 		else if (objTypeStr == "triangle") {
+			std::cout << "reading a triangle" << std::endl;
 			readTriangle(inputStream);
 		}
 	}
+	return true;
 }

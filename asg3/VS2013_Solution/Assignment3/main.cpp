@@ -1,9 +1,10 @@
 #include "main.h"
 #include <iostream>
-#include "Parser.h"
+#include "asgManager.h"
 
 int main()
 {
-
+	asgManager aaa;
+	aaa.execute();
 	return EXIT_SUCCESS;
 }
