@@ -20,11 +20,11 @@ void asgManager::execute()
 	Parser parse(&objHolder, filename);
 	parse.execute();
 	std::cout << "done" << std::endl;
+	std::cout << "Checking data integrity ... ";
 	if (objHolder.getState() == true) {
-		std::cout << "File loaded correctly and state is good!" << std::endl;
+		std::cout << "good" << std::endl;
 	}
 	else {
-		std::cout << "File not loaded correctly" << std::endl;
+		std::cout << "bad!!!" << std::endl;
 	}
-	system("pause");
 }

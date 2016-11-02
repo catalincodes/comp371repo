@@ -68,24 +68,34 @@ void Parser::readPlane(std::ifstream& inputStream)
 	std::string buffer;
 
 	inputStream >> buffer;
+	if (buffer == "nor:")
+		inputStream >> pos.x >> pos.y >> pos.z;
+	else std::cout << "reading error" << std::endl;
+
+	inputStream >> buffer;
 	if (buffer == "pos:")
 		inputStream >> pos.x >> pos.y >> pos.z;
+	else std::cout << "reading error" << std::endl;
 
 	inputStream >> buffer;
 	if (buffer == "amb:")
 		inputStream >> amb.x >> amb.y >> amb.z;
+	else std::cout << "reading error" << std::endl;
 
 	inputStream >> buffer;
 	if (buffer == "dif:")
 		inputStream >> dif.x >> dif.y >> dif.z;
+	else std::cout << "reading error" << std::endl;
 
 	inputStream >> buffer;
 	if (buffer == "spe:")
 		inputStream >> spe.x >> spe.y >> spe.z;
+	else std::cout << "reading error" << std::endl;
 
 	inputStream >> buffer;
 	if (buffer == "shi:")
 		inputStream >> shi;
+	else std::cout << "reading error" << std::endl;
 
 	objectList->addPlane(pos, normal, amb, dif, spe, shi);
 }
@@ -194,23 +204,18 @@ bool Parser::execute()
 		std::string objTypeStr;
 		inputStream >> objTypeStr;
 		if (objTypeStr == "camera") {
-			std::cout << "reading a camera" << std::endl;
 			readCamera(inputStream);
 		}
 		else if (objTypeStr == "light") {
-			std::cout << "reading a light" << std::endl;
 			readLight(inputStream);
 		}
 		else if (objTypeStr == "plane") {
-			std::cout << "reading a plane" << std::endl;
 			readPlane(inputStream);
 		}
 		else if (objTypeStr == "sphere") {
-			std::cout << "reading a sphere" << std::endl;
 			readSphere(inputStream);
 		}
 		else if (objTypeStr == "triangle") {
-			std::cout << "reading a triangle" << std::endl;
 			readTriangle(inputStream);
 		}
 	}
