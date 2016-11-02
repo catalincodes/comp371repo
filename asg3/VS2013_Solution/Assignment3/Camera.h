@@ -17,7 +17,7 @@ public:
 	double getFov() const { return fov; }
 	double getFocalLen() const { return focalLen; }
 	double getAspectRatio() const { return aspect; }
-	void getImageSize(double &width, double &height);
+	void getImageSize(int &width, int &height);
 
 	//setters
 	void setFov(double newFov) { fov = newFov; }

@@ -10,6 +10,10 @@ class ObjectHolder
 {
 private:
 	std::vector<GenericObject*>* objectList;
+	//TODO: save pointer to Camera
+	//TODO: save list of pointers to Light Sources
+	//TODO: ensure that there is ONLY one plane for goodState == true
+
 	bool hasCamera;
 	bool hasLightSrc;
 	bool goodState;
