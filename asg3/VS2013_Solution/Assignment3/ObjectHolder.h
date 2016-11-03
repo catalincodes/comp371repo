@@ -10,21 +10,23 @@ class ObjectHolder
 {
 private:
 	std::vector<GenericObject*>* objectList;
-	//TODO: save pointer to Camera
-	//TODO: save list of pointers to Light Sources
-	//TODO: ensure that there is ONLY one plane for goodState == true
+	Camera* camera;
+	std::vector<Light*>* lightSrc;
 
 	bool hasCamera;
 	bool hasLightSrc;
+	bool hasPlane;
 	bool goodState;
+
 	bool verifyState();
+
 public:
 	ObjectHolder();
 	ObjectHolder(std::vector<GenericObject*>* givenObjectList);
 	~ObjectHolder();
 
 	std::vector<GenericObject*>* getObjectList() { return objectList; }
-	bool getState() const { return goodState; }
+	bool getState() { verifyState(); return goodState; }
 	bool clearList();	
 
 	void addCamera(glm::vec3 pos, double fov, double focalLen, double aspect);
@@ -34,5 +36,9 @@ public:
 		glm::vec3 amb, glm::vec3 dif, glm::vec3 spe,
 		double shi);
 	void addSphere(glm::vec3 pos, glm::vec3 amb, glm::vec3 dif, glm::vec3 spe, double shi, double radius);
+
+	Camera* getCamera() { return camera; }
+	std::vector<Light*>* getLightSources() { return lightSrc; }
+
 };
 

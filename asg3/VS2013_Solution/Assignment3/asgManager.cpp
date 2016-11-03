@@ -31,15 +31,9 @@ void asgManager::execute()
 	}
 
 	std::cout << "Image size: ";
-	std::vector<GenericObject*>* v= objHolder.getObjectList();
-	int pos = 0;
-	for (int i = 0;i < (*v).size(); ++i) {
-		if ((*v)[i]->getObjectType() == CAMERA){
-			pos = i;
-		}
-	}
 
-	Camera* cam = (Camera*)(*v)[pos];
+
+	Camera* cam = objHolder.getCamera();
 	int width = 0, height = 0;
 	cam->getImageSize(width, height);
 	std::cout << "width = " << width << " height = " << height << std::endl;

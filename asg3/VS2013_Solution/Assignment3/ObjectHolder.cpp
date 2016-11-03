@@ -1,9 +1,11 @@
 #include "ObjectHolder.h"
+#include <iostream>
 
 ObjectHolder::ObjectHolder():
 	hasCamera(false), hasLightSrc(false), goodState(false)
 {
 	objectList = new std::vector<GenericObject*>;
+	lightSrc = new std::vector<Light*>;
 }
 
 ObjectHolder::~ObjectHolder()
@@ -15,6 +17,7 @@ ObjectHolder::~ObjectHolder()
 ObjectHolder::ObjectHolder(std::vector<GenericObject*>* givenObjectList):
 	objectList(givenObjectList)
 {
+	lightSrc = new std::vector<Light*>;
 	verifyState();
 }
 
@@ -38,22 +41,61 @@ bool ObjectHolder::clearList()
 
 bool ObjectHolder::verifyState()
 {
+	//std::cout << "Verifying things..." << std::endl;
+	goodState = true; //assume good state
+
+	//reset Camera, Plane and Light src flags to FALSE
+	hasCamera = false; 
+	hasPlane = false;
+	hasLightSrc = false;
+
+	//reset Camera pointer and lightSrc vector of pointers
+	camera = nullptr;
+	lightSrc->clear();
+	lightSrc->resize(0);
+
+	//std::cout << "Cleared lists." << std::endl;
 	for (GenericObject* object : *objectList) {
+		
+		//we can only have one camera
 		if (object->getObjectType() == CAMERA) {
-			if (hasCamera == false)
+			if (hasCamera == false) {
+				//std::cout << "found a camera and saving the pointer" << std::endl;
 				hasCamera = true;
-			else
+				camera = (Camera*)object;
+			}
+			else {
+				//std::cout << "too many cameras!!!!!!" << std::endl;
 				goodState = false;
+			}
+				
 		}
+
+		// we only have one plane
+		if (object->getObjectType() == PLANE) {
+			//std::cout << "found a plane" << std::endl;
+			if (hasPlane == false)
+				hasPlane = true;
+			else {
+				//std::cout << "too many planes!!!!!!" << std::endl;
+				goodState = false;
+			}
+				
+		}
+
+		// we must have a light source
 		if (object->getObjectType() == LIGHT) {
+			//std::cout << "found a light and adding it to the list" << std::endl;
+			lightSrc->push_back((Light*)object);
 			if (hasLightSrc == false)
 				hasLightSrc = true;
 		}
 	}
+
+	// while we do note care if we have a plane, we do need to have a light source and a camera
 	if (hasCamera == false || hasLightSrc == false)
 		goodState = false;
-	else
-		goodState = true;
+	
 	return goodState;
 }
 
