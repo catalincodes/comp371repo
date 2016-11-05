@@ -41,4 +41,3 @@ public:
 	std::vector<Light*>* getLightSources() { return lightSrc; }
 
 };
-

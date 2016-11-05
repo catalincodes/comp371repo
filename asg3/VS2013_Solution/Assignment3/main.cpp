@@ -5,6 +5,7 @@
 int main()
 {
 	asgManager aaa;
+	
 	aaa.execute();
 	return EXIT_SUCCESS;
 }
