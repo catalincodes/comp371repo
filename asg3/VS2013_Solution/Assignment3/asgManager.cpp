@@ -97,6 +97,86 @@ glm::vec3 asgManager::testIntersectionWithSphere(glm::vec3 origin, glm::vec3 dir
 	return sphere->getAmb();
 }
 
+glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 direction, Triangle* triangle)
+{
+	glm::vec3 v1 = triangle->getV1();
+	glm::vec3 v2 = triangle->getV2();
+	glm::vec3 v3 = triangle->getV3();
+
+	
+	// normal = cross product between v1v3 and v1v2
+	glm::vec3 normal= glm::cross(v3 - v1, v2 - v1);
+	double areaTriangle = normal.length() / 2.0; //we'll need it later for barycentric coordinates
+
+	//normalize the normal
+	normal = glm::normalize(normal);
+
+	// triangle is located in plan ax+by+cz+d=0. N=<a,b,c>. The d is by doing dot product between N and any point residing on this plane, so any vertex
+	double d = glm::dot(normal, v1);
+
+	
+	/*
+	Two equations: 
+	(1) P_i = origin + t*direction (where P_i is the intersection point)
+		and 
+	(2) a(P_i.x)+b(P_i.y)+c(P_i.z)+d=0
+
+	Solving for t
+	
+	*/
+
+	double eqnTop = glm::dot(normal, origin) + d;
+	double eqnBot = glm::dot(normal, direction);
+
+	if (fabs(eqnBot) < 0.000001) {
+		return glm::vec3(0.0f);
+	} // they are parallel
+	
+	double t = eqnTop / eqnBot; // parameter t, which gives our position of the target
+	
+	if (normal.z < 0 && eqnBot < 0) // if normal is pointing the same direction as direction vector (in the negative z direction) then our N will result in a negative t although the triangle is in front of us
+		t = -t;
+
+	if (t < 0) {
+		return glm::vec3(0.0f); // triangle is behind us
+	}
+	
+	// intersection of the ray and the plane on which the triangle resides
+	glm::vec3 P = origin + glm::vec3 (t*direction.x, t*direction.y, t*direction.z);
+	
+	//BARYCENTRIC COORDINATES:
+
+	double alpha = glm::cross((P - v1), (v2 - v1)).length() / areaTriangle;
+	double beta = glm::cross((P - v1), (v3 - v1)).length() / areaTriangle;
+	double gamma = 1 - alpha - beta;
+	
+	//check if it is in triangle
+	if (
+		(alpha > 0) &&
+		(beta > 0) &&
+		(gamma > 0)
+		)
+	{
+		return triangle->getAmb();
+	}
+	else {
+		return glm::vec3(0.0f);
+	}
+
+}
+
+glm::vec3 asgManager::testIntersectionWithPlane(glm::vec3 origin, glm::vec3 direction, Plane * plane)
+{
+	// equation: t = (pos-origin) . n / direction . n
+	double t = glm::dot(plane->getPos(), plane->getNormal()) / glm::dot(direction,plane->getNormal());
+	if (t > 0 && t < 50000) {
+		std::cout << "t =" << t << std::endl;
+		return plane->getAmb();
+	}
+	return glm::vec3(0.0f);
+}
+
+
 
 void asgManager::execute()
 {
@@ -130,6 +210,25 @@ void asgManager::execute()
 	image = new cimg_library::CImg<double>(imgWidth, imgHeight, 1, 3, 0);
 
 	glm::vec3 origin = cam->getPos();
+
+	/*
+	glm::vec3 directionVector = getGrid3DPos(840, 430);
+	std::cout << "x=" << directionVector.x << "y=" << directionVector.y << "z=" << directionVector.z << std::endl;
+	std::vector<GenericObject*>* objList = objHolder.getObjectList();
+	
+	for (GenericObject* object : *objList) {
+		if (object->getObjectType() == TRIANGLE) {
+			std::cout << "found triangle " << std::endl;
+			Triangle *t = (Triangle*)object;
+			testIntersectionWithTriangle(origin, directionVector, t);
+		}
+	}
+	*/
+
+	
+
+
+	
 	for (int ypos = 0; ypos < imgHeight;++ypos) {
 		for (int xpos = 0; xpos < imgWidth;++xpos) {
 			glm::vec3 directionVector = getGrid3DPos(xpos, ypos);
@@ -148,6 +247,25 @@ void asgManager::execute()
 						}
 					} // IF SPHERE
 
+					  // is it a Triangle?
+					/*if ((*objList)[i]->getObjectType() == TRIANGLE) {
+						glm::vec3 tgt = testIntersectionWithTriangle(origin, directionVector, (Triangle*)(*objList)[i]);
+						if (tgt != glm::vec3(0.0))
+						{
+							const float color[] = { tgt.x,tgt.y,tgt.z};
+							image->draw_point(xpos, ypos, 0, color);
+						}
+					}*/
+
+					// is it a Triangle?
+					if ((*objList)[i]->getObjectType() == PLANE) {
+						glm::vec3 tgt = testIntersectionWithPlane(origin, directionVector, (Plane*)(*objList)[i]);
+						if (tgt != glm::vec3(0.0)) {
+							const float color[] = { tgt.x,tgt.y,tgt.z };
+							image->draw_point(xpos, ypos, 0, color);
+						}
+					}
+
 
 				} // IF NOT light OR camera
 
@@ -161,6 +279,6 @@ void asgManager::execute()
 	cimg_library::CImgDisplay main_disp(*image, "Render");
 	while (!main_disp.is_closed())
 		main_disp.wait();
-
+	
 	
 }

@@ -30,6 +30,10 @@ class asgManager
 	glm::vec3 getDirection(glm::vec3 p1, glm::vec3 p2);
 
 	glm::vec3 testIntersectionWithSphere(glm::vec3 origin, glm::vec3 direction, Sphere* sphere);
+	glm::vec3 testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 direction, Triangle* triangle);
+
+	glm::vec3 testIntersectionWithPlane(glm::vec3 origin, glm::vec3 direction, Plane* plane);
+
 
 public:
 	
