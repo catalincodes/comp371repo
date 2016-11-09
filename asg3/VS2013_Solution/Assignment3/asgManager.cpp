@@ -28,7 +28,7 @@ glm::vec3 asgManager::getGrid3DPos(int xpos, int ypos)
 		double interpolant = -1.0 + (2.0*((double)xpos / ((double)imgWidth - 1.0)));
 		x = interpolant * f * a * tan((fov / 2.0)*3.1415 / 180);
 
-		interpolant = -1.0 + (2.0*((double)ypos / ((double)imgHeight - 1.0)));
+		interpolant = 1.0 - (2.0*((double)ypos / ((double)imgHeight - 1.0)));
 		y = interpolant * f * tan((fov / 2.0)*3.1415 / 180);
 
 		return glm::vec3(x, y, -f);
@@ -146,9 +146,23 @@ glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 d
 	
 	//BARYCENTRIC COORDINATES:
 
-	double alpha = glm::cross((P - v1), (v2 - v1)).length() / areaTriangle;
-	double beta = glm::cross((P - v1), (v3 - v1)).length() / areaTriangle;
+	glm::vec3 v1P = P - v1;
+	glm::vec3 v1v2 = v2 - v1;
+	double area1 = glm::cross(v1P, v1v2).length() / 2.0;
+	double alpha = area1 / areaTriangle;
+
+	glm::vec3 v3P = P - v3;
+	glm::vec3 v3v1 = v1 - v3;
+	double area2 = glm::cross(v3P, v3v1).length() / 2.0;
+	double beta = area2 / areaTriangle;
+	
 	double gamma = 1 - alpha - beta;
+
+	std::cout << "alpha = " << alpha << std::endl;
+	std::cout << "beta = " << beta << std::endl;
+	std::cout << "gamma = " << gamma << std::endl;
+	
+	//double gg = glm::cross((v2 - v3), (P - v3)).length() / areaTriangle;
 	
 	//check if it is in triangle
 	if (
@@ -211,8 +225,8 @@ void asgManager::execute()
 
 	glm::vec3 origin = cam->getPos();
 
-	/*
-	glm::vec3 directionVector = getGrid3DPos(840, 430);
+	
+	glm::vec3 directionVector = getGrid3DPos(835, 425);
 	std::cout << "x=" << directionVector.x << "y=" << directionVector.y << "z=" << directionVector.z << std::endl;
 	std::vector<GenericObject*>* objList = objHolder.getObjectList();
 	
@@ -220,15 +234,13 @@ void asgManager::execute()
 		if (object->getObjectType() == TRIANGLE) {
 			std::cout << "found triangle " << std::endl;
 			Triangle *t = (Triangle*)object;
-			testIntersectionWithTriangle(origin, directionVector, t);
+			glm::vec3 aa= testIntersectionWithTriangle(origin, directionVector, t);
+			std::cout << "Got IT!" << aa.x << " " << aa.y << " " << aa.z << std::endl;
 		}
 	}
-	*/
-
 	
 
-
-	
+	/*
 	for (int ypos = 0; ypos < imgHeight;++ypos) {
 		for (int xpos = 0; xpos < imgWidth;++xpos) {
 			glm::vec3 directionVector = getGrid3DPos(xpos, ypos);
@@ -236,41 +248,40 @@ void asgManager::execute()
 			for (unsigned int i = 0; i < objList->size();++i) {
 				// check if the objectType is neither Camera nor Light
 				if ((*objList)[i]->getObjectType() != CAMERA && (*objList)[i]->getObjectType() != LIGHT) {
-					
+
 					// is it a Sphere?
 					if ((*objList)[i]->getObjectType() == SPHERE) {
 						glm::vec3 tgt = testIntersectionWithSphere(origin, directionVector, (Sphere*)((*objList)[i]));
-						if (tgt != glm::vec3(0.0))
-						{
-							const float color[] = { tgt.x,tgt.y,tgt.z};
+						if (tgt != glm::vec3(0.0)) {
+							const float color[] = { tgt.x,tgt.y,tgt.z };
 							image->draw_point(xpos, ypos, 0, color);
 						}
 					} // IF SPHERE
 
 					  // is it a Triangle?
-					/*if ((*objList)[i]->getObjectType() == TRIANGLE) {
+					if ((*objList)[i]->getObjectType() == TRIANGLE) {
 						glm::vec3 tgt = testIntersectionWithTriangle(origin, directionVector, (Triangle*)(*objList)[i]);
-						if (tgt != glm::vec3(0.0))
-						{
-							const float color[] = { tgt.x,tgt.y,tgt.z};
-							image->draw_point(xpos, ypos, 0, color);
-						}
-					}*/
-
-					// is it a Triangle?
-					if ((*objList)[i]->getObjectType() == PLANE) {
-						glm::vec3 tgt = testIntersectionWithPlane(origin, directionVector, (Plane*)(*objList)[i]);
 						if (tgt != glm::vec3(0.0)) {
 							const float color[] = { tgt.x,tgt.y,tgt.z };
 							image->draw_point(xpos, ypos, 0, color);
 						}
-					}
 
 
-				} // IF NOT light OR camera
+						// is it a Triangle?
+						if ((*objList)[i]->getObjectType() == PLANE) {
+							glm::vec3 tgt = testIntersectionWithPlane(origin, directionVector, (Plane*)(*objList)[i]);
+							if (tgt != glm::vec3(0.0)) {
+								const float color[] = { tgt.x,tgt.y,tgt.z };
+								image->draw_point(xpos, ypos, 0, color);
+							}
+						}
 
-			} // for OBJECTS
-			//primaryLines.push_back(new Line(glm::vec3(0.0f), result));
+
+					} // IF NOT light OR camera
+
+				} // for OBJECTS
+				//primaryLines.push_back(new Line(glm::vec3(0.0f), result));
+			}
 		}
 	}
 	std::cout << "image made" << std::endl;
@@ -279,6 +290,6 @@ void asgManager::execute()
 	cimg_library::CImgDisplay main_disp(*image, "Render");
 	while (!main_disp.is_closed())
 		main_disp.wait();
-	
+	*/
 	
 }
