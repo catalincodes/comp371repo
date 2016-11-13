@@ -49,7 +49,7 @@ glm::vec3 asgManager::getDirection(glm::vec3 origin, glm::vec3 destination)
 	return direction;
 }
 
-glm::vec3 asgManager::testIntersectionWithSphere(glm::vec3 origin, glm::vec3 direction, Sphere * sphere)
+glm::vec3 asgManager::testIntersectionWithSphere(const glm::vec3 origin, glm::vec3 direction, Sphere* sphere, double& distance)
 {
 	direction = glm::normalize(direction);
 
@@ -77,8 +77,9 @@ glm::vec3 asgManager::testIntersectionWithSphere(glm::vec3 origin, glm::vec3 dir
 
 	double delta = pow(b, 2) - 4.0*c;
 	double t1, t2;
-	double* min;
+	double* min = nullptr;
 	if (delta < 0) {
+		distance = MAX_FAR;
 		return glm::vec3(0.0f);
 	}
 	else if (delta == 0) {
@@ -94,19 +95,31 @@ glm::vec3 asgManager::testIntersectionWithSphere(glm::vec3 origin, glm::vec3 dir
 		else
 			min = &t1;
 	}
+
+	if (min != nullptr) {
+		glm::vec3 P(
+			(origin.x + direction.x * *min),
+			(origin.y + direction.y * *min),
+			(origin.z + direction.z * *min)
+			);
+
+		distance = glm::distance(origin, P);
+	}
+
 	return sphere->getAmb();
 }
 
-glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 direction, Triangle* triangle)
+glm::vec3 asgManager::testIntersectionWithTriangle(const glm::vec3 origin, glm::vec3 direction, Triangle* triangle, double& distance)
 {
 	glm::vec3 v1 = triangle->getV1();
 	glm::vec3 v2 = triangle->getV2();
 	glm::vec3 v3 = triangle->getV3();
-
+	distance = MAX_FAR;
 	
 	// normal = cross product between v1v3 and v1v2
 	glm::vec3 normal= glm::cross(v3 - v1, v2 - v1);
-	double areaTriangle = normal.length() / 2.0; //we'll need it later for barycentric coordinates
+	//double areaTriangle = normal.length() / 2.0; //we'll need it later for barycentric coordinates
+	double areaTriangle = getMagnitude(normal) / 2.0; //we'll need it later for barycentric coordinates
 
 	//normalize the normal
 	normal = glm::normalize(normal);
@@ -143,7 +156,7 @@ glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 d
 	
 	// intersection of the ray and the plane on which the triangle resides
 	glm::vec3 P = origin + glm::vec3 (t*direction.x, t*direction.y, t*direction.z);
-	std::cout << "P=" << P.x << " " << P.y << " " << P.z << std::endl;
+	distance = glm::distance(origin, P);
 	//BARYCENTRIC COORDINATES:
 
 	glm::vec3 v1P = P - v1;
@@ -155,20 +168,22 @@ glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 d
 	glm::vec3 v3v1 = v1 - v3;
 	double area2 = getMagnitude(glm::cross(v3P, v3v1)) / 2.0;
 	double beta = area2 / areaTriangle;
-	
-	double gamma = 1 - alpha - beta;
 
-	std::cout << "alpha = " << alpha << std::endl;
-	std::cout << "beta = " << beta << std::endl;
-	std::cout << "gamma = " << gamma << std::endl;
-	
+	glm::vec3 v2P = P - v2;
+	glm::vec3 v2v3 = v3 - v2;
+	double area3 = getMagnitude(glm::cross(v2P, v2v3)) / 2.0;
+	double gamma = area3 / areaTriangle;
+
+	double checksum = alpha + beta + gamma;
 	//double gg = glm::cross((v2 - v3), (P - v3)).length() / areaTriangle;
 	
 	//check if it is in triangle
 	if (
 		(alpha > 0) &&
 		(beta > 0) &&
-		(gamma > 0)
+		(gamma > 0) &&
+		(checksum <= 1.01) &&
+		(checksum >= 0.99)
 		)
 	{
 		return triangle->getAmb();
@@ -179,17 +194,26 @@ glm::vec3 asgManager::testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 d
 
 }
 
-glm::vec3 asgManager::testIntersectionWithPlane(glm::vec3 origin, glm::vec3 direction, Plane * plane)
+glm::vec3 asgManager::testIntersectionWithPlane(const glm::vec3 origin, glm::vec3 direction, Plane* plane, double& distance)
 {
 	// equation: t = (pos-origin) . n / direction . n
 	glm::vec3 pos = plane->getPos();
 	glm::vec3 normal = plane->getNormal();
 
 	double t = glm::dot(pos, normal) / glm::dot(direction,normal);
-
-	std::cout << t << std::endl;
+	distance = MAX_FAR;
+	
 	if (t > 0 && t < 50000) {
-		std::cout << "t =" << t << std::endl;
+
+		glm::vec3 P(
+			(origin.x + direction.x * t),
+			(origin.y + direction.y * t),
+			(origin.z + direction.z * t)
+			);
+
+		distance = glm::distance(origin, P);
+
+		//std::cout << "t =" << t << std::endl;
 		return plane->getAmb();
 	}
 	return glm::vec3(0.0f);
@@ -228,72 +252,84 @@ void asgManager::execute()
 
 	glm::vec3 origin = cam->getPos();
 
-	/*
+	
 	//debug
-	//a=830, b=430
+	/*
+	//a=870, b=330
 	int a, b;
 	std:: cin >> a >> b;
 	glm::vec3 directionVector = getGrid3DPos(a, b);
 	std::cout << "x=" << directionVector.x << "y=" << directionVector.y << "z=" << directionVector.z << std::endl;
 	std::vector<GenericObject*>* objList = objHolder.getObjectList();
-	
+	double distance = MAX_FAR; 
+
 	for (GenericObject* object : *objList) {
 		if (object->getObjectType() == TRIANGLE) {
 			std::cout << "found triangle " << std::endl;
 			Triangle *t = (Triangle*)object;
-			glm::vec3 aa= testIntersectionWithTriangle(origin, directionVector, t);
+			glm::vec3 aa= testIntersectionWithTriangle(origin, directionVector, t, distance);
 			std::cout << "Got IT!" << aa.x << " " << aa.y << " " << aa.z << std::endl;
 		}
 	}
 	*/
 	//end debug
-
+	
 	
 	for (int ypos = 0; ypos < imgHeight;++ypos) {
 		for (int xpos = 0; xpos < imgWidth;++xpos) {
 			glm::vec3 directionVector = getGrid3DPos(xpos, ypos);
 			std::vector<GenericObject*>* objList = objHolder.getObjectList();
+
+			glm::vec3 pixelColor(0.0);
+			double distanceToClosest = MAX_FAR;
+			
 			for (unsigned int i = 0; i < objList->size();++i) {
 				// check if the objectType is neither Camera nor Light
 				if ((*objList)[i]->getObjectType() != CAMERA && (*objList)[i]->getObjectType() != LIGHT) {
+
 					
-					/*
+					// is it a Plane?
+					if ((*objList)[i]->getObjectType() == PLANE) {
+						double objectDistance = MAX_FAR;
+						glm::vec3 tgt = testIntersectionWithPlane(origin, directionVector, (Plane*)(*objList)[i], objectDistance);
+						if (tgt != glm::vec3(0.0) && objectDistance < distanceToClosest) {
+							pixelColor = tgt;
+							distanceToClosest = objectDistance;
+						}
+					}
+
 					// is it a Sphere?
 					if ((*objList)[i]->getObjectType() == SPHERE) {
-						glm::vec3 tgt = testIntersectionWithSphere(origin, directionVector, (Sphere*)((*objList)[i]));
-						if (tgt != glm::vec3(0.0)) {
-							const float color[] = { tgt.x,tgt.y,tgt.z };
-							image->draw_point(xpos, ypos, 0, color);
+						double objectDistance = MAX_FAR;
+						glm::vec3 tgt = testIntersectionWithSphere(origin, directionVector, (Sphere*)((*objList)[i]), objectDistance);
+						if (tgt != glm::vec3(0.0) && objectDistance < distanceToClosest) {
+							pixelColor = tgt;
+							distanceToClosest = objectDistance;
 						}
 					} // IF SPHERE
-					*/
-
-					/*
+					
 					  // is it a Triangle?
 					if ((*objList)[i]->getObjectType() == TRIANGLE) {
-						glm::vec3 tgt = testIntersectionWithTriangle(origin, directionVector, (Triangle*)(*objList)[i]);
-						if (tgt != glm::vec3(0.0)) {
-							const float color[] = { tgt.x,tgt.y,tgt.z };
-							image->draw_point(xpos, ypos, 0, color);
+						double objectDistance = MAX_FAR;
+						glm::vec3 tgt = testIntersectionWithTriangle(origin, directionVector, (Triangle*)(*objList)[i], objectDistance);
+						if (tgt != glm::vec3(0.0) && objectDistance < distanceToClosest) {
+							pixelColor = tgt;
+							distanceToClosest = objectDistance;
 						}
-						*/
+					}
 
-						// is it a Plane?
-						if ((*objList)[i]->getObjectType() == PLANE) {
-							glm::vec3 tgt = testIntersectionWithPlane(origin, directionVector, (Plane*)(*objList)[i]);
-							if (tgt != glm::vec3(0.0)) {
-								const float color[] = { tgt.x,tgt.y,tgt.z };
-								image->draw_point(xpos, ypos, 0, color);
-							}
-						}
+				
+				} // IF NOT light OR camera
 
+			} // for OBJECTS
 
-					} // IF NOT light OR camera
-
-				} // for OBJECTS
+			const float color[] = { pixelColor.x, pixelColor.y, pixelColor.z };
+			image->draw_point(xpos, ypos, 0, color);
 				//primaryLines.push_back(new Line(glm::vec3(0.0f), result));
 			}
 		}
+	
+
 	std::cout << "image made" << std::endl;
 	image->save("render.bmp");
 
@@ -301,4 +337,5 @@ void asgManager::execute()
 	while (!main_disp.is_closed()) {
 		main_disp.wait();
 	}
+	
 }

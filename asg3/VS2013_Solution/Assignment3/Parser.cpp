@@ -69,7 +69,7 @@ void Parser::readPlane(std::ifstream& inputStream)
 
 	inputStream >> buffer;
 	if (buffer == "nor:")
-		inputStream >> pos.x >> pos.y >> pos.z;
+		inputStream >> normal.x >> normal.y >> normal.z;
 	else std::cout << "reading error" << std::endl;
 
 	inputStream >> buffer;

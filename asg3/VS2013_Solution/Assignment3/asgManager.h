@@ -6,6 +6,8 @@
 #include "..\CImg\CImg.h"
 #include <iostream>
 
+const double MAX_FAR = std::numeric_limits<double>::max();
+
 struct Line
 {
 	Line() {}
@@ -29,11 +31,9 @@ class asgManager
 	glm::vec3 getGrid3DPos(int xpos, int ypos);
 	glm::vec3 getDirection(glm::vec3 p1, glm::vec3 p2);
 
-	glm::vec3 testIntersectionWithSphere(glm::vec3 origin, glm::vec3 direction, Sphere* sphere);
-	glm::vec3 testIntersectionWithTriangle(glm::vec3 origin, glm::vec3 direction, Triangle* triangle);
-
-	glm::vec3 testIntersectionWithPlane(glm::vec3 origin, glm::vec3 direction, Plane* plane);
-
+	glm::vec3 testIntersectionWithSphere(const glm::vec3 origin , glm::vec3 direction, Sphere* sphere, double& distance);
+	glm::vec3 testIntersectionWithTriangle(const glm::vec3 origin , glm::vec3 direction, Triangle* triangle, double& distance);
+	glm::vec3 testIntersectionWithPlane(const glm::vec3 origin, glm::vec3 direction, Plane* plane, double& distance);
 
 public:
 	
