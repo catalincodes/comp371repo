@@ -230,16 +230,17 @@ void asgManager::execute()
 	//ObjectHolder objHolder;
 	Parser parse(&objHolder, filename);
 	
-	std::cout << "Reading file...";
+	std::cout << "Attempting to read file...";
 	parse.execute();
 	std::cout << "done" << std::endl;
 	
 	std::cout << "Checking data integrity ... ";
 	if (objHolder.getState() == true) {
-		std::cout << "good" << std::endl;
+		std::cout << "OK" << std::endl;
 	}
 	else {
-		std::cout << "bad!!!" << std::endl;
+		std::cout << "File not found or corrupt!" << std::endl;
+		return;
 	}
 
 	std::cout << "Image size: ";
@@ -330,8 +331,8 @@ void asgManager::execute()
 		}
 	
 
-	std::cout << "image made" << std::endl;
-	image->save("render.bmp");
+	std::cout << "Image generated." << std::endl;
+	std::cout << "Saving to file...";    image->save("render.bmp");   std::cout << " DONE" << std::endl;
 
 	cimg_library::CImgDisplay main_disp(*image, "Render");
 	while (!main_disp.is_closed()) {
